@@ -1,0 +1,47 @@
+version: "3"
+
+dotenv: [".env"]
+
+tasks:
+  deps:
+    desc: Install project dependencies
+    cmds:
+      - go mod download
+      - brew install golangci-lint
+
+  fmt:
+    desc: Format Go code
+    cmds:
+      - go fmt ./...
+      - go mod tidy
+
+  lint:
+    desc: Run golangci-lint
+    cmds:
+      - golangci-lint run ./...
+
+  test:
+    desc: Run tests
+    cmds:
+      - go test -v ./...
+
+  coverage:
+    desc: Run tests with coverage
+    cmds:
+      - go test -v -coverprofile=coverage.out ./...
+      - go tool cover -html=coverage.out -o coverage.html
+
+  build:
+    desc: Build the project
+    cmds:
+      - go build -v ./...
+
+  clean:
+    desc: Clean build artifacts
+    cmds:
+      - rm -f coverage.out coverage.html
+      - go clean
+
+  check:
+    desc: Run all quality checks
+    deps: [fmt, lint, test]
