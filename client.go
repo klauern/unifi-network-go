@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"os"
@@ -29,6 +30,7 @@ type Client struct {
 	httpClient *http.Client
 	apiKey     string
 	insecure   bool
+	logger     *slog.Logger
 }
 
 // ClientOption allows for customizing the client
@@ -55,6 +57,13 @@ func WithInsecure(insecure bool) ClientOption {
 	}
 }
 
+// WithLogger sets a custom logger for the client
+func WithLogger(logger *slog.Logger) ClientOption {
+	return func(c *Client) {
+		c.logger = logger
+	}
+}
+
 // NewClient creates a new UniFi Network API client
 func NewClient(baseURL string, options ...ClientOption) (*Client, error) {
 	parsedURL, err := url.Parse(baseURL)
@@ -68,11 +77,21 @@ func NewClient(baseURL string, options ...ClientOption) (*Client, error) {
 	trimmedPath = strings.TrimPrefix(trimmedPath, "proxy/network/integration")
 	parsedURL.Path = path.Join("/proxy/network/integration", trimmedPath)
 
-	fmt.Fprintf(os.Stderr, "Base URL after adding API prefix: %s\n", parsedURL.String())
+	// Create default logger
+	logLevel := new(slog.LevelVar)
+	if os.Getenv("DEBUG") != "" {
+		logLevel.Set(slog.LevelDebug)
+	} else {
+		logLevel.Set(slog.LevelInfo)
+	}
+	defaultLogger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
+		Level: logLevel,
+	}))
 
 	client := &Client{
 		baseURL:    parsedURL,
 		httpClient: http.DefaultClient,
+		logger:     defaultLogger,
 	}
 
 	for _, opt := range options {
@@ -93,6 +112,10 @@ func NewClient(baseURL string, options ...ClientOption) (*Client, error) {
 			Transport: transport,
 		}
 	}
+
+	client.logger.Debug("Created UniFi Network client",
+		"base_url", client.baseURL.String(),
+		"insecure", client.insecure)
 
 	return client, nil
 }
@@ -134,12 +157,12 @@ func (c *Client) do(ctx context.Context, method, urlPath string, body interface{
 		u.RawQuery = pathParts[1]
 	}
 
-	fmt.Fprintf(os.Stderr, "URL construction:\n")
-	fmt.Fprintf(os.Stderr, "  Base path: %s\n", c.baseURL.Path)
-	fmt.Fprintf(os.Stderr, "  URL path: %s\n", urlPath)
-	fmt.Fprintf(os.Stderr, "  Final path: %s\n", u.Path)
-	fmt.Fprintf(os.Stderr, "  Query params: %s\n", u.RawQuery)
-	fmt.Fprintf(os.Stderr, "  Final URL: %s\n", u.String())
+	c.logger.Debug("Constructing request",
+		"base_path", c.baseURL.Path,
+		"url_path", urlPath,
+		"final_path", u.Path,
+		"query_params", u.RawQuery,
+		"final_url", u.String())
 
 	var bodyReader io.Reader
 	if body != nil {
@@ -148,7 +171,7 @@ func (c *Client) do(ctx context.Context, method, urlPath string, body interface{
 			return fmt.Errorf("failed to marshal request body: %w", err)
 		}
 		bodyReader = bytes.NewReader(jsonBody)
-		fmt.Fprintf(os.Stderr, "Request body: %s\n", string(jsonBody))
+		c.logger.Debug("Request body", "body", string(jsonBody))
 	}
 
 	req, err := http.NewRequestWithContext(ctx, method, u.String(), bodyReader)
@@ -160,8 +183,10 @@ func (c *Client) do(ctx context.Context, method, urlPath string, body interface{
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("X-API-KEY", c.apiKey)
 
-	fmt.Fprintf(os.Stderr, "Making %s request to: %s\n", method, u.String())
-	fmt.Fprintf(os.Stderr, "Headers: %v\n", req.Header)
+	c.logger.Debug("Making request",
+		"method", method,
+		"url", u.String(),
+		"headers", req.Header)
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
@@ -175,8 +200,9 @@ func (c *Client) do(ctx context.Context, method, urlPath string, body interface{
 		return fmt.Errorf("failed to read response body: %w", err)
 	}
 
-	fmt.Fprintf(os.Stderr, "Response status: %s\n", resp.Status)
-	fmt.Fprintf(os.Stderr, "Response body: %s\n", string(respBody))
+	c.logger.Debug("Received response",
+		"status", resp.Status,
+		"body_length", len(respBody))
 
 	if resp.StatusCode >= 400 {
 		var apiErr Error

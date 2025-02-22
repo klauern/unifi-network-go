@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"log/slog"
 	"net/http"
+	"os"
 	"testing"
 )
 
@@ -30,10 +32,22 @@ func newTestClient(t *testing.T, baseURL string) (*Client, *mockTransport) {
 	mock := &mockTransport{}
 	httpClient := &http.Client{Transport: mock}
 
+	// Create a test logger that uses the same DEBUG environment variable as the client
+	logLevel := new(slog.LevelVar)
+	if os.Getenv("DEBUG") != "" {
+		logLevel.Set(slog.LevelDebug)
+	} else {
+		logLevel.Set(slog.LevelInfo)
+	}
+	testLogger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
+		Level: logLevel,
+	}))
+
 	client, err := NewClient(
 		baseURL,
 		WithHTTPClient(httpClient),
 		WithAPIKey("test-api-key"),
+		WithLogger(testLogger),
 	)
 	if err != nil {
 		t.Fatalf("failed to create test client: %v", err)
