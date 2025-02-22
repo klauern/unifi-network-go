@@ -33,7 +33,7 @@ type ListSitesResponse struct {
 // If Multi-Site option is disabled, returns just the default site.
 func (c *Client) ListSites(ctx context.Context, params *ListSitesParams) (*ListSitesResponse, error) {
 	const maxLimit = 200
-	urlPath := "/v1/sites"
+	urlPath := "/api/v1/sites"
 
 	if params != nil {
 		query := url.Values{}

@@ -11,7 +11,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"path"
 	"strings"
 )
 
@@ -70,12 +69,6 @@ func NewClient(baseURL string, options ...ClientOption) (*Client, error) {
 	if err != nil {
 		return nil, fmt.Errorf("invalid base URL: %w", err)
 	}
-
-	// Ensure the base path includes the API prefix
-	// First, trim any existing proxy/network/integration prefix to avoid doubles
-	trimmedPath := strings.TrimPrefix(parsedURL.Path, "/proxy/network/integration")
-	trimmedPath = strings.TrimPrefix(trimmedPath, "proxy/network/integration")
-	parsedURL.Path = path.Join("/proxy/network/integration", trimmedPath)
 
 	// Create default logger
 	logLevel := new(slog.LevelVar)
@@ -137,7 +130,7 @@ type ApplicationInfo struct {
 // GetApplicationInfo retrieves generic information about the Network application
 func (c *Client) GetApplicationInfo(ctx context.Context) (*ApplicationInfo, error) {
 	var response ApplicationInfo
-	err := c.do(ctx, http.MethodGet, "/v1/info", nil, &response)
+	err := c.do(ctx, http.MethodGet, "/api/v1/info", nil, &response)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get application info: %w", err)
 	}
@@ -145,47 +138,66 @@ func (c *Client) GetApplicationInfo(ctx context.Context) (*ApplicationInfo, erro
 	return &response, nil
 }
 
-func (c *Client) do(ctx context.Context, method, urlPath string, body interface{}, result interface{}) error {
-	u := *c.baseURL
-
-	// Split the path and query if present
-	pathParts := strings.Split(urlPath, "?")
-	u.Path = path.Join(u.Path, pathParts[0])
-
-	// Add query parameters if they exist
-	if len(pathParts) > 1 {
-		u.RawQuery = pathParts[1]
+func (c *Client) do(ctx context.Context, method, urlPath string, body, result interface{}) error {
+	// Split path and query parameters
+	pathAndQuery := strings.SplitN(urlPath, "?", 2)
+	path := pathAndQuery[0]
+	var queryParams string
+	if len(pathAndQuery) > 1 {
+		queryParams = pathAndQuery[1]
 	}
 
-	c.logger.Debug("Constructing request",
-		"base_path", c.baseURL.Path,
-		"url_path", urlPath,
-		"final_path", u.Path,
-		"query_params", u.RawQuery,
-		"final_url", u.String())
+	// Construct the final URL
+	u := *c.baseURL
+	if strings.Contains(u.Path, "/proxy/network") {
+		// For proxy/network endpoints, keep the path as is and don't add /api/ prefix
+		u.Path = strings.TrimSuffix(u.Path, "/") + "/" + strings.TrimPrefix(path, "/")
+	} else {
+		// For regular API endpoints, ensure /api/ prefix
+		if !strings.HasPrefix(path, "/api/") {
+			path = "/api/" + strings.TrimPrefix(path, "/")
+		}
+		u.Path = path
+	}
 
-	var bodyReader io.Reader
+	// Add back query parameters if they exist
+	if queryParams != "" {
+		u.RawQuery = queryParams
+	}
+
+	var reqBody io.Reader
 	if body != nil {
 		jsonBody, err := json.Marshal(body)
 		if err != nil {
-			return fmt.Errorf("failed to marshal request body: %w", err)
+			return fmt.Errorf("failed to encode request body: %w", err)
 		}
-		bodyReader = bytes.NewReader(jsonBody)
-		c.logger.Debug("Request body", "body", string(jsonBody))
+		reqBody = bytes.NewReader(jsonBody)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, method, u.String(), bodyReader)
+	req, err := http.NewRequestWithContext(ctx, method, u.String(), reqBody)
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
 
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Accept", "application/json")
-	req.Header.Set("X-API-KEY", c.apiKey)
+	if reqBody != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
+
+	// Set Accept header based on URL path
+	if strings.Contains(u.Path, "/proxy/network") {
+		req.Header.Set("Accept", "*/*")
+	} else {
+		req.Header.Set("Accept", "application/json")
+	}
+	req.Header.Set("X-Api-Key", c.apiKey)
 
 	c.logger.Debug("Making request",
 		"method", method,
-		"url", u.String(),
+		"base_path", c.baseURL.Path,
+		"url_path", urlPath,
+		"final_path", u.Path,
+		"query_params", queryParams,
+		"final_url", u.String(),
 		"headers", req.Header)
 
 	resp, err := c.httpClient.Do(req)

@@ -23,10 +23,10 @@ func TestClient_ListDevices(t *testing.T) {
 				{
 					ID:         "abc123",
 					Name:       "test-device",
-					Type:       "uap",
+					Features:   []string{"uap"},
 					Model:      "U6-Pro",
 					Version:    "6.0.15",
-					State:      1,
+					State:      "ONLINE",
 					IP:         "192.168.1.100",
 					MAC:        "00:11:22:33:44:55",
 					Disabled:   false,
@@ -62,8 +62,8 @@ func TestClient_ListDevices(t *testing.T) {
 		if device.Name != expectedResponse.Data[0].Name {
 			t.Errorf("expected device name %s, got %s", expectedResponse.Data[0].Name, device.Name)
 		}
-		if device.Type != expectedResponse.Data[0].Type {
-			t.Errorf("expected device type %s, got %s", expectedResponse.Data[0].Type, device.Type)
+		if device.Type != "uap" {
+			t.Errorf("expected device type %s, got %s", "uap", device.Type)
 		}
 	})
 
@@ -100,10 +100,10 @@ func TestClient_GetDevice(t *testing.T) {
 		expectedDevice := Device{
 			ID:         deviceID,
 			Name:       "test-device",
-			Type:       "uap",
+			Features:   []string{"uap"},
 			Model:      "U6-Pro",
 			Version:    "6.0.15",
-			State:      1,
+			State:      "ONLINE",
 			IP:         "192.168.1.100",
 			MAC:        "00:11:22:33:44:55",
 			Disabled:   false,
@@ -130,8 +130,8 @@ func TestClient_GetDevice(t *testing.T) {
 		if result.Name != expectedDevice.Name {
 			t.Errorf("expected device name %s, got %s", expectedDevice.Name, result.Name)
 		}
-		if result.Type != expectedDevice.Type {
-			t.Errorf("expected device type %s, got %s", expectedDevice.Type, result.Type)
+		if result.Type != "uap" {
+			t.Errorf("expected device type %s, got %s", "uap", result.Type)
 		}
 	})
 

@@ -65,7 +65,7 @@ func (c *Client) ListNetworkClients(ctx context.Context, siteID string, params *
 		return nil, fmt.Errorf("siteId is required")
 	}
 
-	urlPath := fmt.Sprintf("/v1/sites/%s/clients", siteID)
+	urlPath := fmt.Sprintf("/api/v1/sites/%s/clients", siteID)
 
 	if params != nil {
 		query := url.Values{}
@@ -105,7 +105,7 @@ func (c *Client) GetNetworkClient(ctx context.Context, siteID, clientID string) 
 		Data []NetworkClient `json:"data"`
 	}
 
-	err := c.do(ctx, http.MethodGet, fmt.Sprintf("/v1/sites/%s/clients/%s", siteID, clientID), nil, &response)
+	err := c.do(ctx, http.MethodGet, fmt.Sprintf("/api/v1/sites/%s/clients/%s", siteID, clientID), nil, &response)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get network client: %w", err)
 	}

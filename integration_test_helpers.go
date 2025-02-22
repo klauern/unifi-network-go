@@ -2,8 +2,11 @@ package unifi
 
 import (
 	"crypto/tls"
+	"fmt"
 	"net/http"
+	"net/url"
 	"os"
+	"strings"
 	"testing"
 )
 
@@ -30,6 +33,27 @@ func loadIntegrationConfig(t *testing.T) *integrationTestConfig {
 	baseURL := os.Getenv("UNIFI_BASE_URL")
 	if baseURL == "" {
 		t.Fatal("UNIFI_BASE_URL environment variable is required for integration tests")
+	}
+
+	// Parse the URL to check if it has a port
+	parsedURL, err := url.Parse(baseURL)
+	if err != nil {
+		t.Fatalf("failed to parse base URL: %v", err)
+	}
+
+	// Add port 8443 if no port is specified
+	if parsedURL.Port() == "" {
+		host := parsedURL.Host
+		if strings.Contains(host, ":") {
+			host = host[:strings.Index(host, ":")]
+		}
+		parsedURL.Host = fmt.Sprintf("%s:8443", host)
+		baseURL = parsedURL.String()
+	}
+
+	// Ensure the base URL has the correct structure for UniFi Network API
+	if !strings.Contains(baseURL, "/proxy/network") {
+		baseURL = strings.TrimSuffix(baseURL, "/") + "/proxy/network"
 	}
 
 	apiKey := os.Getenv("UNIFI_API_KEY")

@@ -12,26 +12,25 @@ func TestClient_CreateHotspotVoucher(t *testing.T) {
 		client, mock := newTestClient(t, testBaseURL)
 
 		request := &CreateHotspotVoucherRequest{
-			Note:                "Test Voucher",
-			Duration:            60,
+			Name:                "Test Voucher",
 			TimeLimitMinutes:    1440,
 			AuthorizeGuestLimit: 2,
 			DataUsageLimitMB:    1024,
-			DownRateLimitKbps:   1024,
-			UpRateLimitKbps:     512,
+			RxRateLimitKbps:     1024,
+			TxRateLimitKbps:     512,
 			Count:               1,
 		}
 
 		expectedVoucher := HotspotVoucher{
 			ID:                  "abc123",
 			CreatedAt:           "2023-01-01T00:00:00Z",
-			Name:                request.Note,
+			Name:                request.Name,
 			Code:                "WIFI123",
 			AuthorizeGuestLimit: request.AuthorizeGuestLimit,
 			TimeLimitMinutes:    request.TimeLimitMinutes,
 			DataUsageLimitMB:    request.DataUsageLimitMB,
-			RxRateLimitKbps:     request.DownRateLimitKbps,
-			TxRateLimitKbps:     request.UpRateLimitKbps,
+			RxRateLimitKbps:     request.RxRateLimitKbps,
+			TxRateLimitKbps:     request.TxRateLimitKbps,
 		}
 
 		mock.response = mockResponse(200, CreateHotspotVoucherResponse{
@@ -54,8 +53,8 @@ func TestClient_CreateHotspotVoucher(t *testing.T) {
 		if voucher.Code != expectedVoucher.Code {
 			t.Errorf("expected voucher code %s, got %s", expectedVoucher.Code, voucher.Code)
 		}
-		if voucher.Name != request.Note {
-			t.Errorf("expected voucher name %s, got %s", request.Note, voucher.Name)
+		if voucher.Name != request.Name {
+			t.Errorf("expected voucher name %s, got %s", request.Name, voucher.Name)
 		}
 	})
 
@@ -170,27 +169,20 @@ func TestClient_GenerateHotspotVouchers(t *testing.T) {
 			TxRateLimitKbps:     2,
 		}
 
-		expectedVoucher := HotspotVoucher{
-			ID:                  "abc123",
-			CreatedAt:           "2023-01-01T00:00:00Z",
-			Name:                request.Name,
-			Code:                "WIFI123",
-			AuthorizeGuestLimit: request.AuthorizeGuestLimit,
-			TimeLimitMinutes:    request.TimeLimitMinutes,
-			DataUsageLimitMB:    request.DataUsageLimitMB,
-			RxRateLimitKbps:     request.RxRateLimitKbps,
-			TxRateLimitKbps:     request.TxRateLimitKbps,
-		}
-
 		mock.response = mockResponse(201, GenerateHotspotVouchersResponse{
-			Meta: struct {
-				RC      string `json:"rc"`
-				Message string `json:"msg"`
-			}{
-				RC:      "ok",
-				Message: "Vouchers created",
+			Data: []HotspotVoucher{
+				{
+					ID:                  "abc123",
+					CreatedAt:           "2024-02-22T12:00:00Z",
+					Name:                request.Name,
+					Code:                "ABC123",
+					AuthorizeGuestLimit: request.AuthorizeGuestLimit,
+					TimeLimitMinutes:    request.TimeLimitMinutes,
+					DataUsageLimitMB:    request.DataUsageLimitMB,
+					RxRateLimitKbps:     request.RxRateLimitKbps,
+					TxRateLimitKbps:     request.TxRateLimitKbps,
+				},
 			},
-			Data: []HotspotVoucher{expectedVoucher},
 		})
 
 		result, err := client.GenerateHotspotVouchers(ctx, testSiteID, request)
@@ -203,11 +195,11 @@ func TestClient_GenerateHotspotVouchers(t *testing.T) {
 		}
 
 		voucher := result.Data[0]
-		if voucher.ID != expectedVoucher.ID {
-			t.Errorf("expected voucher ID %s, got %s", expectedVoucher.ID, voucher.ID)
+		if voucher.ID != "abc123" {
+			t.Errorf("expected voucher ID abc123, got %s", voucher.ID)
 		}
-		if voucher.Code != expectedVoucher.Code {
-			t.Errorf("expected voucher code %s, got %s", expectedVoucher.Code, voucher.Code)
+		if voucher.Code != "ABC123" {
+			t.Errorf("expected voucher code ABC123, got %s", voucher.Code)
 		}
 		if voucher.Name != request.Name {
 			t.Errorf("expected voucher name %s, got %s", request.Name, voucher.Name)

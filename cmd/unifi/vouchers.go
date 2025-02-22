@@ -94,13 +94,13 @@ func hotspotVouchersCommand() *cli.Command {
 						Value:   "default",
 					},
 					&cli.StringFlag{
-						Name:     "note",
+						Name:     "name",
 						Usage:    "Voucher note",
 						Required: true,
 					},
 					&cli.IntFlag{
-						Name:     "duration",
-						Usage:    "Duration in minutes",
+						Name:     "time-limit",
+						Usage:    "Time limit in minutes",
 						Required: true,
 					},
 					&cli.IntFlag{
@@ -132,9 +132,8 @@ func hotspotVouchersCommand() *cli.Command {
 					}
 
 					request := &unifi.CreateHotspotVoucherRequest{
-						Note:             c.String("note"),
-						Duration:         c.Int("duration"),
-						TimeLimitMinutes: c.Int("duration"),
+						Name:             c.String("name"),
+						TimeLimitMinutes: c.Int("time-limit"),
 						Count:            c.Int("count"),
 					}
 
@@ -145,10 +144,10 @@ func hotspotVouchersCommand() *cli.Command {
 						request.DataUsageLimitMB = c.Int("data-limit")
 					}
 					if c.IsSet("down-limit") {
-						request.DownRateLimitKbps = c.Int("down-limit")
+						request.RxRateLimitKbps = c.Int("down-limit")
 					}
 					if c.IsSet("up-limit") {
-						request.UpRateLimitKbps = c.Int("up-limit")
+						request.TxRateLimitKbps = c.Int("up-limit")
 					}
 
 					ctx := context.Background()

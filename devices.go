@@ -2,6 +2,7 @@ package unifi
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -9,22 +10,43 @@ import (
 
 // Device represents a UniFi network device
 type Device struct {
-	ID         string `json:"_id"`
-	MAC        string `json:"mac"`
-	Model      string `json:"model"`
-	Type       string `json:"type"`
-	Name       string `json:"name"`
-	SiteID     string `json:"site_id"`
-	IP         string `json:"ip"`
-	Version    string `json:"version"`
-	Adopted    bool   `json:"adopted"`
-	Disabled   bool   `json:"disabled"`
-	Uptime     int64  `json:"uptime"`
-	LastSeen   int64  `json:"last_seen"`
-	Upgradable bool   `json:"upgradable"`
-	State      int    `json:"state"`
-	LastUplink string `json:"last_uplink"`
-	UplinkMAC  string `json:"uplink"`
+	ID         string   `json:"id"`
+	MAC        string   `json:"macAddress"`
+	Model      string   `json:"model"`
+	Type       string   `json:"-"` // Derived from features
+	Features   []string `json:"features"`
+	Name       string   `json:"name"`
+	SiteID     string   `json:"siteId"`
+	IP         string   `json:"ipAddress"`
+	Version    string   `json:"version"`
+	Adopted    bool     `json:"adopted"`
+	Disabled   bool     `json:"disabled"`
+	Uptime     int64    `json:"uptime"`
+	LastSeen   int64    `json:"lastSeen"`
+	Upgradable bool     `json:"upgradable"`
+	State      string   `json:"state"`
+	LastUplink string   `json:"lastUplink"`
+	UplinkMAC  string   `json:"uplinkMac"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler to derive Type from Features
+func (d *Device) UnmarshalJSON(data []byte) error {
+	type Alias Device
+	aux := &struct {
+		*Alias
+	}{
+		Alias: (*Alias)(d),
+	}
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+
+	// Derive Type from Features
+	if len(d.Features) > 0 {
+		d.Type = d.Features[0]
+	}
+
+	return nil
 }
 
 // DevicePortAction represents the action to perform on a device port
@@ -84,7 +106,18 @@ type ListDevicesResponse struct {
 
 // ListDevices retrieves a paginated list of devices for a site
 func (c *Client) ListDevices(ctx context.Context, siteID string, params *ListDevicesParams) (*ListDevicesResponse, error) {
-	urlPath := fmt.Sprintf("/v1/sites/%s/devices", siteID)
+	const maxLimit = 200
+
+	if params != nil {
+		if params.Limit > maxLimit {
+			return nil, fmt.Errorf("limit must be between 0 and %d", maxLimit)
+		}
+		if params.Offset < 0 {
+			return nil, fmt.Errorf("offset must be non-negative")
+		}
+	}
+
+	urlPath := fmt.Sprintf("/api/v1/sites/%s/devices", siteID)
 
 	if params != nil {
 		query := url.Values{}
@@ -117,7 +150,7 @@ func (c *Client) GetDevice(ctx context.Context, siteID, deviceID string) (*Devic
 		Data []Device `json:"data"`
 	}
 
-	err := c.do(ctx, http.MethodGet, fmt.Sprintf("/v1/sites/%s/devices/%s", siteID, deviceID), nil, &response)
+	err := c.do(ctx, http.MethodGet, fmt.Sprintf("/api/v1/sites/%s/devices/%s", siteID, deviceID), nil, &response)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get device: %w", err)
 	}
@@ -135,7 +168,7 @@ func (c *Client) ExecutePortAction(ctx context.Context, siteID, deviceID string,
 		return fmt.Errorf("action cannot be nil")
 	}
 
-	urlPath := fmt.Sprintf("/v1/sites/%s/devices/%s/port/%s", siteID, deviceID, action.PortID)
+	urlPath := fmt.Sprintf("/api/v1/sites/%s/devices/%s/port/%s", siteID, deviceID, action.PortID)
 	err := c.do(ctx, http.MethodPost, urlPath, action, nil)
 	if err != nil {
 		return fmt.Errorf("failed to execute port action: %w", err)
@@ -150,7 +183,7 @@ func (c *Client) ExecuteDeviceAction(ctx context.Context, siteID, deviceID strin
 		return fmt.Errorf("action cannot be nil")
 	}
 
-	urlPath := fmt.Sprintf("/v1/sites/%s/devices/%s", siteID, deviceID)
+	urlPath := fmt.Sprintf("/api/v1/sites/%s/devices/%s", siteID, deviceID)
 	err := c.do(ctx, http.MethodPost, urlPath, action, nil)
 	if err != nil {
 		return fmt.Errorf("failed to execute device action: %w", err)
@@ -165,7 +198,7 @@ func (c *Client) GetDeviceStatistics(ctx context.Context, siteID, deviceID strin
 		Data []DeviceStatistics `json:"data"`
 	}
 
-	urlPath := fmt.Sprintf("/v1/sites/%s/devices/%s/stats", siteID, deviceID)
+	urlPath := fmt.Sprintf("/api/v1/sites/%s/devices/%s/stats", siteID, deviceID)
 	err := c.do(ctx, http.MethodGet, urlPath, nil, &response)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get device statistics: %w", err)

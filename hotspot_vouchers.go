@@ -38,14 +38,13 @@ type ListHotspotVouchersResponse struct {
 
 // CreateHotspotVoucherRequest represents the request to create a hotspot voucher
 type CreateHotspotVoucherRequest struct {
-	Note                string `json:"note,omitempty"`
-	Duration            int    `json:"duration"`                        // Duration in minutes
-	AuthorizeGuestLimit int    `json:"authorize_guest_limit,omitempty"` // Optional limit for number of guests
-	TimeLimitMinutes    int    `json:"time_limit_minutes"`              // How long the voucher will provide access
-	DataUsageLimitMB    int    `json:"data_usage_limit_mb,omitempty"`   // Optional data usage limit in MB
-	DownRateLimitKbps   int    `json:"down_rate_limit_kbps,omitempty"`  // Optional download rate limit
-	UpRateLimitKbps     int    `json:"up_rate_limit_kbps,omitempty"`    // Optional upload rate limit
-	Count               int    `json:"count,omitempty"`                 // Number of vouchers to create
+	Name                string `json:"name"`                           // Required: Voucher note
+	TimeLimitMinutes    int    `json:"timeLimitMinutes"`               // Required: How long the voucher will provide access
+	AuthorizeGuestLimit int    `json:"authorizedGuestLimit,omitempty"` // Optional limit for number of guests
+	DataUsageLimitMB    int    `json:"dataUsageLimitMBytes,omitempty"` // Optional data usage limit in MB
+	RxRateLimitKbps     int    `json:"rxRateLimitKbps,omitempty"`      // Optional download rate limit
+	TxRateLimitKbps     int    `json:"txRateLimitKbps,omitempty"`      // Optional upload rate limit
+	Count               int    `json:"count,omitempty"`                // Number of vouchers to create
 }
 
 // CreateHotspotVoucherResponse represents the response from creating hotspot vouchers
@@ -66,10 +65,6 @@ type GenerateHotspotVouchersRequest struct {
 
 // GenerateHotspotVouchersResponse represents the response from generating vouchers
 type GenerateHotspotVouchersResponse struct {
-	Meta struct {
-		RC      string `json:"rc"`
-		Message string `json:"msg"`
-	} `json:"meta"`
 	Data []HotspotVoucher `json:"data"`
 }
 
@@ -80,7 +75,7 @@ type GetVoucherDetailsResponse struct {
 
 // ListHotspotVouchers retrieves a paginated list of hotspot vouchers for a site
 func (c *Client) ListHotspotVouchers(ctx context.Context, siteID string, params *ListHotspotVouchersParams) (*ListHotspotVouchersResponse, error) {
-	urlPath := fmt.Sprintf("/v1/sites/%s/hotspot/vouchers", siteID)
+	urlPath := fmt.Sprintf("/api/v1/sites/%s/hotspot/vouchers", siteID)
 
 	if params != nil {
 		query := url.Values{}
@@ -106,7 +101,7 @@ func (c *Client) ListHotspotVouchers(ctx context.Context, siteID string, params 
 
 // CreateHotspotVoucher creates one or more hotspot vouchers for a site
 func (c *Client) CreateHotspotVoucher(ctx context.Context, siteID string, request *CreateHotspotVoucherRequest) (*CreateHotspotVoucherResponse, error) {
-	urlPath := fmt.Sprintf("/v1/sites/%s/hotspot/vouchers", siteID)
+	urlPath := fmt.Sprintf("/api/v1/sites/%s/hotspot/vouchers", siteID)
 
 	var response CreateHotspotVoucherResponse
 	err := c.do(ctx, http.MethodPost, urlPath, request, &response)
@@ -123,7 +118,7 @@ func (c *Client) GetHotspotVoucher(ctx context.Context, siteID, voucherID string
 		Data []HotspotVoucher `json:"data"`
 	}
 
-	err := c.do(ctx, http.MethodGet, fmt.Sprintf("/v1/sites/%s/hotspot/vouchers/%s", siteID, voucherID), nil, &response)
+	err := c.do(ctx, http.MethodGet, fmt.Sprintf("/api/v1/sites/%s/hotspot/vouchers/%s", siteID, voucherID), nil, &response)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get hotspot voucher: %w", err)
 	}
@@ -137,7 +132,7 @@ func (c *Client) GetHotspotVoucher(ctx context.Context, siteID, voucherID string
 
 // DeleteHotspotVoucher deletes a specific hotspot voucher
 func (c *Client) DeleteHotspotVoucher(ctx context.Context, siteID, voucherID string) error {
-	err := c.do(ctx, http.MethodDelete, fmt.Sprintf("/v1/sites/%s/hotspot/vouchers/%s", siteID, voucherID), nil, nil)
+	err := c.do(ctx, http.MethodDelete, fmt.Sprintf("/api/v1/sites/%s/hotspot/vouchers/%s", siteID, voucherID), nil, nil)
 	if err != nil {
 		return fmt.Errorf("failed to delete hotspot voucher: %w", err)
 	}
@@ -174,7 +169,7 @@ func (c *Client) GenerateHotspotVouchers(ctx context.Context, siteID string, req
 		return nil, fmt.Errorf("txRateLimitKbps must be between 2 and 100000")
 	}
 
-	urlPath := fmt.Sprintf("/v1/sites/%s/hotspot/vouchers", siteID)
+	urlPath := fmt.Sprintf("/api/v1/sites/%s/hotspot/vouchers/create", siteID)
 
 	var response GenerateHotspotVouchersResponse
 	err := c.do(ctx, http.MethodPost, urlPath, request, &response)
@@ -194,7 +189,7 @@ func (c *Client) GetVoucherDetails(ctx context.Context, siteID, voucherID string
 		return nil, fmt.Errorf("voucherId is required")
 	}
 
-	urlPath := fmt.Sprintf("/v1/sites/%s/hotspot/vouchers/%s", siteID, voucherID)
+	urlPath := fmt.Sprintf("/api/v1/sites/%s/hotspot/vouchers/%s", siteID, voucherID)
 
 	var response GetVoucherDetailsResponse
 	err := c.do(ctx, http.MethodGet, urlPath, nil, &response)

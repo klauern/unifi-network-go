@@ -68,7 +68,7 @@ func devicesCommand() *cli.Command {
 					fmt.Println(strings.Repeat("-", 80))
 					for _, device := range resp.Data {
 						status := "Offline"
-						if device.State == 1 {
+						if device.State == "ONLINE" {
 							status = "Online"
 						}
 						if device.Disabled {
