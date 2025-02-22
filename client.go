@@ -3,12 +3,15 @@ package unifi
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"path"
+	"strings"
 )
 
 type Error struct {
@@ -24,6 +27,8 @@ type Error struct {
 type Client struct {
 	baseURL    *url.URL
 	httpClient *http.Client
+	apiKey     string
+	insecure   bool
 }
 
 // ClientOption allows for customizing the client
@@ -36,12 +41,34 @@ func WithHTTPClient(httpClient *http.Client) ClientOption {
 	}
 }
 
+// WithAPIKey sets the API key for authentication
+func WithAPIKey(apiKey string) ClientOption {
+	return func(c *Client) {
+		c.apiKey = apiKey
+	}
+}
+
+// WithInsecure sets whether to skip TLS certificate verification
+func WithInsecure(insecure bool) ClientOption {
+	return func(c *Client) {
+		c.insecure = insecure
+	}
+}
+
 // NewClient creates a new UniFi Network API client
 func NewClient(baseURL string, options ...ClientOption) (*Client, error) {
 	parsedURL, err := url.Parse(baseURL)
 	if err != nil {
 		return nil, fmt.Errorf("invalid base URL: %w", err)
 	}
+
+	// Ensure the base path includes the API prefix
+	// First, trim any existing proxy/network/integration prefix to avoid doubles
+	trimmedPath := strings.TrimPrefix(parsedURL.Path, "/proxy/network/integration")
+	trimmedPath = strings.TrimPrefix(trimmedPath, "proxy/network/integration")
+	parsedURL.Path = path.Join("/proxy/network/integration", trimmedPath)
+
+	fmt.Fprintf(os.Stderr, "Base URL after adding API prefix: %s\n", parsedURL.String())
 
 	client := &Client{
 		baseURL:    parsedURL,
@@ -50,6 +77,21 @@ func NewClient(baseURL string, options ...ClientOption) (*Client, error) {
 
 	for _, opt := range options {
 		opt(client)
+	}
+
+	if client.apiKey == "" {
+		return nil, fmt.Errorf("API key is required")
+	}
+
+	// Configure TLS if insecure is set
+	if client.insecure {
+		transport := http.DefaultTransport.(*http.Transport).Clone()
+		transport.TLSClientConfig = &tls.Config{
+			InsecureSkipVerify: true,
+		}
+		client.httpClient = &http.Client{
+			Transport: transport,
+		}
 	}
 
 	return client, nil
@@ -82,7 +124,22 @@ func (c *Client) GetApplicationInfo(ctx context.Context) (*ApplicationInfo, erro
 
 func (c *Client) do(ctx context.Context, method, urlPath string, body interface{}, result interface{}) error {
 	u := *c.baseURL
-	u.Path = path.Join(u.Path, urlPath)
+
+	// Split the path and query if present
+	pathParts := strings.Split(urlPath, "?")
+	u.Path = path.Join(u.Path, pathParts[0])
+
+	// Add query parameters if they exist
+	if len(pathParts) > 1 {
+		u.RawQuery = pathParts[1]
+	}
+
+	fmt.Fprintf(os.Stderr, "URL construction:\n")
+	fmt.Fprintf(os.Stderr, "  Base path: %s\n", c.baseURL.Path)
+	fmt.Fprintf(os.Stderr, "  URL path: %s\n", urlPath)
+	fmt.Fprintf(os.Stderr, "  Final path: %s\n", u.Path)
+	fmt.Fprintf(os.Stderr, "  Query params: %s\n", u.RawQuery)
+	fmt.Fprintf(os.Stderr, "  Final URL: %s\n", u.String())
 
 	var bodyReader io.Reader
 	if body != nil {
@@ -91,6 +148,7 @@ func (c *Client) do(ctx context.Context, method, urlPath string, body interface{
 			return fmt.Errorf("failed to marshal request body: %w", err)
 		}
 		bodyReader = bytes.NewReader(jsonBody)
+		fmt.Fprintf(os.Stderr, "Request body: %s\n", string(jsonBody))
 	}
 
 	req, err := http.NewRequestWithContext(ctx, method, u.String(), bodyReader)
@@ -100,6 +158,10 @@ func (c *Client) do(ctx context.Context, method, urlPath string, body interface{
 
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
+	req.Header.Set("X-API-KEY", c.apiKey)
+
+	fmt.Fprintf(os.Stderr, "Making %s request to: %s\n", method, u.String())
+	fmt.Fprintf(os.Stderr, "Headers: %v\n", req.Header)
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
@@ -107,17 +169,27 @@ func (c *Client) do(ctx context.Context, method, urlPath string, body interface{
 	}
 	defer resp.Body.Close()
 
+	// Read the entire response body for debugging
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("failed to read response body: %w", err)
+	}
+
+	fmt.Fprintf(os.Stderr, "Response status: %s\n", resp.Status)
+	fmt.Fprintf(os.Stderr, "Response body: %s\n", string(respBody))
+
 	if resp.StatusCode >= 400 {
 		var apiErr Error
-		if err := json.NewDecoder(resp.Body).Decode(&apiErr); err != nil {
-			return fmt.Errorf("failed to decode error response: %w", err)
+		if err := json.Unmarshal(respBody, &apiErr); err != nil {
+			// If we can't decode the error response, return the raw response
+			return fmt.Errorf("API error (status %d): %s", resp.StatusCode, string(respBody))
 		}
 		return &apiErr
 	}
 
 	if result != nil {
-		if err := json.NewDecoder(resp.Body).Decode(result); err != nil {
-			return fmt.Errorf("failed to decode response: %w", err)
+		if err := json.Unmarshal(respBody, result); err != nil {
+			return fmt.Errorf("failed to decode response: %w\nResponse body: %s", err, string(respBody))
 		}
 	}
 

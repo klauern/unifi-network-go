@@ -14,38 +14,41 @@ func TestClient_ListDevices(t *testing.T) {
 	t.Run("successful request", func(t *testing.T) {
 		client, mock := newTestClient(t, baseURL)
 
-		expectedDevices := []Device{
-			{
-				ID:         "abc123",
-				MAC:        "00:11:22:33:44:55",
-				Model:      "U6-Lite",
-				Type:       "uap",
-				Name:       "Test AP",
-				SiteID:     siteID,
-				IP:         "192.168.1.10",
-				Version:    "6.0.0",
-				Adopted:    true,
-				Disabled:   false,
-				LastSeen:   1234567890,
-				Upgradable: false,
-				State:      1,
+		expectedResponse := ListDevicesResponse{
+			PaginatedResponse: PaginatedResponse{
+				Count:      1,
+				TotalCount: 100,
+			},
+			Data: []Device{
+				{
+					ID:         "abc123",
+					Name:       "test-device",
+					Type:       "uap",
+					Model:      "U6-Pro",
+					Version:    "6.0.15",
+					State:      1,
+					IP:         "192.168.1.100",
+					MAC:        "00:11:22:33:44:55",
+					Disabled:   false,
+					SiteID:     siteID,
+					Adopted:    true,
+					LastSeen:   1234567890,
+					Upgradable: false,
+				},
 			},
 		}
 
-		mock.response = mockResponse(200, ListDevicesResponse{
-			PaginatedResponse: PaginatedResponse{
-				Count:      1,
-				TotalCount: 1,
-			},
-			Data: expectedDevices,
-		})
+		mock.response = mockResponse(200, expectedResponse)
 
 		result, err := client.ListDevices(ctx, siteID, &ListDevicesParams{
-			Limit: 100,
-			Type:  "uap",
+			Limit: 25,
 		})
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
+		}
+
+		if result.Count != expectedResponse.Count {
+			t.Errorf("expected count %d, got %d", expectedResponse.Count, result.Count)
 		}
 
 		if len(result.Data) != 1 {
@@ -53,14 +56,14 @@ func TestClient_ListDevices(t *testing.T) {
 		}
 
 		device := result.Data[0]
-		if device.ID != expectedDevices[0].ID {
-			t.Errorf("expected device ID %s, got %s", expectedDevices[0].ID, device.ID)
+		if device.ID != expectedResponse.Data[0].ID {
+			t.Errorf("expected device ID %s, got %s", expectedResponse.Data[0].ID, device.ID)
 		}
-		if device.MAC != expectedDevices[0].MAC {
-			t.Errorf("expected device MAC %s, got %s", expectedDevices[0].MAC, device.MAC)
+		if device.Name != expectedResponse.Data[0].Name {
+			t.Errorf("expected device name %s, got %s", expectedResponse.Data[0].Name, device.Name)
 		}
-		if device.Type != expectedDevices[0].Type {
-			t.Errorf("expected device type %s, got %s", expectedDevices[0].Type, device.Type)
+		if device.Type != expectedResponse.Data[0].Type {
+			t.Errorf("expected device type %s, got %s", expectedResponse.Data[0].Type, device.Type)
 		}
 	})
 
@@ -96,18 +99,18 @@ func TestClient_GetDevice(t *testing.T) {
 
 		expectedDevice := Device{
 			ID:         deviceID,
-			MAC:        "00:11:22:33:44:55",
-			Model:      "U6-Lite",
+			Name:       "test-device",
 			Type:       "uap",
-			Name:       "Test AP",
-			SiteID:     siteID,
-			IP:         "192.168.1.10",
-			Version:    "6.0.0",
-			Adopted:    true,
+			Model:      "U6-Pro",
+			Version:    "6.0.15",
+			State:      1,
+			IP:         "192.168.1.100",
+			MAC:        "00:11:22:33:44:55",
 			Disabled:   false,
+			SiteID:     siteID,
+			Adopted:    true,
 			LastSeen:   1234567890,
 			Upgradable: false,
-			State:      1,
 		}
 
 		mock.response = mockResponse(200, struct {
@@ -124,8 +127,11 @@ func TestClient_GetDevice(t *testing.T) {
 		if result.ID != expectedDevice.ID {
 			t.Errorf("expected device ID %s, got %s", expectedDevice.ID, result.ID)
 		}
-		if result.MAC != expectedDevice.MAC {
-			t.Errorf("expected device MAC %s, got %s", expectedDevice.MAC, result.MAC)
+		if result.Name != expectedDevice.Name {
+			t.Errorf("expected device name %s, got %s", expectedDevice.Name, result.Name)
+		}
+		if result.Type != expectedDevice.Type {
+			t.Errorf("expected device type %s, got %s", expectedDevice.Type, result.Type)
 		}
 	})
 
@@ -141,6 +147,63 @@ func TestClient_GetDevice(t *testing.T) {
 		_, err := client.GetDevice(ctx, siteID, "nonexistent")
 		if err == nil {
 			t.Fatal("expected error, got nil")
+		}
+		if err.Error() != "device not found: nonexistent" {
+			t.Errorf("expected error message %q, got %q", "device not found: nonexistent", err.Error())
+		}
+	})
+}
+
+func TestClient_ExecuteDeviceAction(t *testing.T) {
+	baseURL := "https://192.168.1.1"
+	ctx := context.Background()
+	siteID := "default"
+	deviceID := "abc123"
+
+	t.Run("successful request", func(t *testing.T) {
+		client, mock := newTestClient(t, baseURL)
+		mock.response = mockResponse(200, nil)
+
+		action := &DeviceAction{
+			Action: "restart",
+		}
+
+		err := client.ExecuteDeviceAction(ctx, siteID, deviceID, action)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+	})
+
+	t.Run("nil action", func(t *testing.T) {
+		client, _ := newTestClient(t, baseURL)
+
+		err := client.ExecuteDeviceAction(ctx, siteID, deviceID, nil)
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+	})
+
+	t.Run("error response", func(t *testing.T) {
+		client, mock := newTestClient(t, baseURL)
+
+		mock.response = mockResponse(404, Error{
+			Status:     404,
+			StatusName: "Not Found",
+			Message:    "Device not found",
+		})
+
+		action := &DeviceAction{
+			Action: "restart",
+		}
+
+		err := client.ExecuteDeviceAction(ctx, siteID, "nonexistent", action)
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+
+		var apiErr *Error
+		if !errors.As(err, &apiErr) {
+			t.Errorf("expected *Error, got %T", err)
 		}
 	})
 }
@@ -174,9 +237,6 @@ func TestClient_ExecutePortAction(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error, got nil")
 		}
-		if err.Error() != "action cannot be nil" {
-			t.Errorf("expected error message %q, got %q", "action cannot be nil", err.Error())
-		}
 	})
 
 	t.Run("error response", func(t *testing.T) {
@@ -195,63 +255,6 @@ func TestClient_ExecutePortAction(t *testing.T) {
 		}
 
 		err := client.ExecutePortAction(ctx, siteID, "nonexistent", action)
-		if err == nil {
-			t.Fatal("expected error, got nil")
-		}
-
-		var apiErr *Error
-		if !errors.As(err, &apiErr) {
-			t.Errorf("expected *Error, got %T", err)
-		}
-	})
-}
-
-func TestClient_ExecuteDeviceAction(t *testing.T) {
-	baseURL := "https://192.168.1.1"
-	ctx := context.Background()
-	siteID := "default"
-	deviceID := "abc123"
-
-	t.Run("successful request", func(t *testing.T) {
-		client, mock := newTestClient(t, baseURL)
-		mock.response = mockResponse(200, nil)
-
-		action := &DeviceAction{
-			Action: "restart",
-		}
-
-		err := client.ExecuteDeviceAction(ctx, siteID, deviceID, action)
-		if err != nil {
-			t.Fatalf("unexpected error: %v", err)
-		}
-	})
-
-	t.Run("nil action", func(t *testing.T) {
-		client, _ := newTestClient(t, baseURL)
-
-		err := client.ExecuteDeviceAction(ctx, siteID, deviceID, nil)
-		if err == nil {
-			t.Fatal("expected error, got nil")
-		}
-		if err.Error() != "action cannot be nil" {
-			t.Errorf("expected error message %q, got %q", "action cannot be nil", err.Error())
-		}
-	})
-
-	t.Run("error response", func(t *testing.T) {
-		client, mock := newTestClient(t, baseURL)
-
-		mock.response = mockResponse(404, Error{
-			Status:     404,
-			StatusName: "Not Found",
-			Message:    "Device not found",
-		})
-
-		action := &DeviceAction{
-			Action: "restart",
-		}
-
-		err := client.ExecuteDeviceAction(ctx, siteID, "nonexistent", action)
 		if err == nil {
 			t.Fatal("expected error, got nil")
 		}

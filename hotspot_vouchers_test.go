@@ -2,17 +2,14 @@ package unifi
 
 import (
 	"context"
-	"errors"
 	"testing"
 )
 
 func TestClient_CreateHotspotVoucher(t *testing.T) {
-	baseURL := "https://192.168.1.1"
 	ctx := context.Background()
-	siteID := "default"
 
 	t.Run("successful request", func(t *testing.T) {
-		client, mock := newTestClient(t, baseURL)
+		client, mock := newTestClient(t, testBaseURL)
 
 		request := &CreateHotspotVoucherRequest{
 			Note:                "Test Voucher",
@@ -41,7 +38,7 @@ func TestClient_CreateHotspotVoucher(t *testing.T) {
 			Data: []HotspotVoucher{expectedVoucher},
 		})
 
-		result, err := client.CreateHotspotVoucher(ctx, siteID, request)
+		result, err := client.CreateHotspotVoucher(ctx, testSiteID, request)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -63,7 +60,7 @@ func TestClient_CreateHotspotVoucher(t *testing.T) {
 	})
 
 	t.Run("error response", func(t *testing.T) {
-		client, mock := newTestClient(t, baseURL)
+		client, mock := newTestClient(t, testBaseURL)
 
 		mock.response = mockResponse(400, Error{
 			Status:     400,
@@ -71,26 +68,17 @@ func TestClient_CreateHotspotVoucher(t *testing.T) {
 			Message:    "Invalid parameters",
 		})
 
-		_, err := client.CreateHotspotVoucher(ctx, siteID, &CreateHotspotVoucherRequest{})
-		if err == nil {
-			t.Fatal("expected error, got nil")
-		}
-
-		var apiErr *Error
-		if !errors.As(err, &apiErr) {
-			t.Errorf("expected *Error, got %T", err)
-		}
+		_, err := client.CreateHotspotVoucher(ctx, testSiteID, &CreateHotspotVoucherRequest{})
+		assertErrorResponse(t, err, 400, "Invalid parameters")
 	})
 }
 
 func TestClient_GetHotspotVoucher(t *testing.T) {
-	baseURL := "https://192.168.1.1"
 	ctx := context.Background()
-	siteID := "default"
 	voucherID := "abc123"
 
 	t.Run("successful request", func(t *testing.T) {
-		client, mock := newTestClient(t, baseURL)
+		client, mock := newTestClient(t, testBaseURL)
 
 		expectedVoucher := HotspotVoucher{
 			ID:               voucherID,
@@ -106,7 +94,7 @@ func TestClient_GetHotspotVoucher(t *testing.T) {
 			Data: []HotspotVoucher{expectedVoucher},
 		})
 
-		result, err := client.GetHotspotVoucher(ctx, siteID, voucherID)
+		result, err := client.GetHotspotVoucher(ctx, testSiteID, voucherID)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -120,7 +108,7 @@ func TestClient_GetHotspotVoucher(t *testing.T) {
 	})
 
 	t.Run("voucher not found", func(t *testing.T) {
-		client, mock := newTestClient(t, baseURL)
+		client, mock := newTestClient(t, testBaseURL)
 
 		mock.response = mockResponse(200, struct {
 			Data []HotspotVoucher `json:"data"`
@@ -128,31 +116,32 @@ func TestClient_GetHotspotVoucher(t *testing.T) {
 			Data: []HotspotVoucher{},
 		})
 
-		_, err := client.GetHotspotVoucher(ctx, siteID, "nonexistent")
+		_, err := client.GetHotspotVoucher(ctx, testSiteID, "nonexistent")
 		if err == nil {
 			t.Fatal("expected error, got nil")
+		}
+		if err.Error() != "voucher not found: nonexistent" {
+			t.Errorf("expected error message %q, got %q", "voucher not found: nonexistent", err.Error())
 		}
 	})
 }
 
 func TestClient_DeleteHotspotVoucher(t *testing.T) {
-	baseURL := "https://192.168.1.1"
 	ctx := context.Background()
-	siteID := "default"
 	voucherID := "abc123"
 
 	t.Run("successful request", func(t *testing.T) {
-		client, mock := newTestClient(t, baseURL)
+		client, mock := newTestClient(t, testBaseURL)
 		mock.response = mockResponse(200, nil)
 
-		err := client.DeleteHotspotVoucher(ctx, siteID, voucherID)
+		err := client.DeleteHotspotVoucher(ctx, testSiteID, voucherID)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
 	})
 
 	t.Run("error response", func(t *testing.T) {
-		client, mock := newTestClient(t, baseURL)
+		client, mock := newTestClient(t, testBaseURL)
 
 		mock.response = mockResponse(404, Error{
 			Status:     404,
@@ -160,25 +149,16 @@ func TestClient_DeleteHotspotVoucher(t *testing.T) {
 			Message:    "Voucher not found",
 		})
 
-		err := client.DeleteHotspotVoucher(ctx, siteID, "nonexistent")
-		if err == nil {
-			t.Fatal("expected error, got nil")
-		}
-
-		var apiErr *Error
-		if !errors.As(err, &apiErr) {
-			t.Errorf("expected *Error, got %T", err)
-		}
+		err := client.DeleteHotspotVoucher(ctx, testSiteID, "nonexistent")
+		assertErrorResponse(t, err, 404, "Voucher not found")
 	})
 }
 
 func TestClient_GenerateHotspotVouchers(t *testing.T) {
-	baseURL := "https://192.168.1.1"
 	ctx := context.Background()
-	siteID := "default"
 
 	t.Run("successful request", func(t *testing.T) {
-		client, mock := newTestClient(t, baseURL)
+		client, mock := newTestClient(t, testBaseURL)
 
 		request := &GenerateHotspotVouchersRequest{
 			Count:               1,
@@ -213,7 +193,7 @@ func TestClient_GenerateHotspotVouchers(t *testing.T) {
 			Data: []HotspotVoucher{expectedVoucher},
 		})
 
-		result, err := client.GenerateHotspotVouchers(ctx, siteID, request)
+		result, err := client.GenerateHotspotVouchers(ctx, testSiteID, request)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -235,7 +215,7 @@ func TestClient_GenerateHotspotVouchers(t *testing.T) {
 	})
 
 	t.Run("validation errors", func(t *testing.T) {
-		client, _ := newTestClient(t, baseURL)
+		client, _ := newTestClient(t, testBaseURL)
 
 		tests := []struct {
 			name    string
@@ -291,7 +271,7 @@ func TestClient_GenerateHotspotVouchers(t *testing.T) {
 
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
-				_, err := client.GenerateHotspotVouchers(ctx, siteID, tt.request)
+				_, err := client.GenerateHotspotVouchers(ctx, testSiteID, tt.request)
 				if err == nil {
 					t.Fatal("expected error, got nil")
 				}
@@ -303,7 +283,7 @@ func TestClient_GenerateHotspotVouchers(t *testing.T) {
 	})
 
 	t.Run("error response", func(t *testing.T) {
-		client, mock := newTestClient(t, baseURL)
+		client, mock := newTestClient(t, testBaseURL)
 
 		mock.response = mockResponse(400, Error{
 			Status:     400,
@@ -317,26 +297,17 @@ func TestClient_GenerateHotspotVouchers(t *testing.T) {
 			TimeLimitMinutes: 1,
 		}
 
-		_, err := client.GenerateHotspotVouchers(ctx, siteID, request)
-		if err == nil {
-			t.Fatal("expected error, got nil")
-		}
-
-		var apiErr *Error
-		if !errors.As(err, &apiErr) {
-			t.Errorf("expected *Error, got %T", err)
-		}
+		_, err := client.GenerateHotspotVouchers(ctx, testSiteID, request)
+		assertErrorResponse(t, err, 400, "Invalid parameters")
 	})
 }
 
 func TestClient_GetVoucherDetails(t *testing.T) {
-	baseURL := "https://192.168.1.1"
 	ctx := context.Background()
-	siteID := "default"
 	voucherID := "4997eeca-0276-4993-bfeb-53cbbbaa4f00"
 
 	t.Run("successful request", func(t *testing.T) {
-		client, mock := newTestClient(t, baseURL)
+		client, mock := newTestClient(t, testBaseURL)
 
 		expectedVoucher := HotspotVoucher{
 			ID:                  voucherID,
@@ -358,7 +329,7 @@ func TestClient_GetVoucherDetails(t *testing.T) {
 			Data: []HotspotVoucher{expectedVoucher},
 		})
 
-		result, err := client.GetVoucherDetails(ctx, siteID, voucherID)
+		result, err := client.GetVoucherDetails(ctx, testSiteID, voucherID)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -381,7 +352,7 @@ func TestClient_GetVoucherDetails(t *testing.T) {
 	})
 
 	t.Run("validation errors", func(t *testing.T) {
-		client, _ := newTestClient(t, baseURL)
+		client, _ := newTestClient(t, testBaseURL)
 
 		tests := []struct {
 			name      string
@@ -417,23 +388,23 @@ func TestClient_GetVoucherDetails(t *testing.T) {
 	})
 
 	t.Run("voucher not found", func(t *testing.T) {
-		client, mock := newTestClient(t, baseURL)
+		client, mock := newTestClient(t, testBaseURL)
 
 		mock.response = mockResponse(200, GetVoucherDetailsResponse{
 			Data: []HotspotVoucher{},
 		})
 
-		_, err := client.GetVoucherDetails(ctx, siteID, "nonexistent")
+		_, err := client.GetVoucherDetails(ctx, testSiteID, "nonexistent")
 		if err == nil {
 			t.Fatal("expected error, got nil")
 		}
 		if err.Error() != "voucher not found: nonexistent" {
-			t.Errorf("expected error %q, got %q", "voucher not found: nonexistent", err.Error())
+			t.Errorf("expected error message %q, got %q", "voucher not found: nonexistent", err.Error())
 		}
 	})
 
 	t.Run("error response", func(t *testing.T) {
-		client, mock := newTestClient(t, baseURL)
+		client, mock := newTestClient(t, testBaseURL)
 
 		mock.response = mockResponse(404, Error{
 			Status:     404,
@@ -441,14 +412,7 @@ func TestClient_GetVoucherDetails(t *testing.T) {
 			Message:    "Voucher not found",
 		})
 
-		_, err := client.GetVoucherDetails(ctx, siteID, "nonexistent")
-		if err == nil {
-			t.Fatal("expected error, got nil")
-		}
-
-		var apiErr *Error
-		if !errors.As(err, &apiErr) {
-			t.Errorf("expected *Error, got %T", err)
-		}
+		_, err := client.GetVoucherDetails(ctx, testSiteID, "nonexistent")
+		assertErrorResponse(t, err, 404, "Voucher not found")
 	})
 }

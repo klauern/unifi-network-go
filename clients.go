@@ -7,7 +7,7 @@ import (
 	"net/url"
 )
 
-// NetworkClient represents a connected client device
+// NetworkClient represents a connected client device per the UniFi API
 type NetworkClient struct {
 	ID             string  `json:"_id"`            // Unique identifier
 	Name           string  `json:"name"`           // Client name
@@ -28,7 +28,7 @@ type NetworkClient struct {
 	DeviceName     string  `json:"device_name"`    // Connected device name
 	DeviceMAC      string  `json:"device_mac"`     // Connected device MAC
 	RxBytes        int64   `json:"rx_bytes"`       // Received bytes
-	TxBytes        int64   `json:"tx_bytes"`       // Transmitted bytes
+	TxBytes        int64   `json:"tx_bytes"`       // Transmitted bytek
 	RxRate         float64 `json:"rx_rate"`        // Current receive rate
 	TxRate         float64 `json:"tx_rate"`        // Current transmit rate
 	SignalStrength int     `json:"signal"`         // Signal strength (for wireless)
@@ -42,22 +42,21 @@ type NetworkClient struct {
 	UseFixedIP     bool    `json:"use_fixedip"`    // Whether using fixed IP
 	FixedIP        string  `json:"fixed_ip"`       // Fixed IP address if set
 	NetworkID      string  `json:"network_id"`     // Network identifier
-	Blocked        bool    `json:"blocked"`        // Whether client is blocked
-	Authorized     bool    `json:"authorized"`     // Whether client is authorized
 }
 
 // ListNetworkClientsParams contains parameters for listing network clients
 type ListNetworkClientsParams struct {
-	Offset      int    `json:"offset,omitempty"` // Default: 0
-	Limit       int    `json:"limit,omitempty"`  // [0..200] Default: 25
-	Type        string `json:"type,omitempty"`   // Filter by type: "all", "wired", "wireless"
-	WithinHours int    `json:"within,omitempty"` // Show clients seen within last X hours
+	Offset int `json:"offset,omitempty"` // Default: 0
+	Limit  int `json:"limit,omitempty"`  // [0..200] Default: 25
 }
 
 // ListNetworkClientsResponse represents the response from listing network clients
 type ListNetworkClientsResponse struct {
-	PaginatedResponse
-	Data []NetworkClient `json:"data"`
+	Offset     int             `json:"offset"`
+	Limit      int             `json:"limit"`
+	Count      int             `json:"count"`
+	TotalCount int             `json:"totalCount"`
+	Data       []NetworkClient `json:"data"`
 }
 
 // ListNetworkClients retrieves a paginated list of network clients for a site
@@ -78,15 +77,6 @@ func (c *Client) ListNetworkClients(ctx context.Context, siteID string, params *
 				return nil, fmt.Errorf("limit must be between 0 and 200")
 			}
 			query.Set("limit", fmt.Sprint(params.Limit))
-		}
-		if params.Type != "" {
-			if params.Type != "all" && params.Type != "wired" && params.Type != "wireless" {
-				return nil, fmt.Errorf("type must be one of: all, wired, wireless")
-			}
-			query.Set("type", params.Type)
-		}
-		if params.WithinHours > 0 {
-			query.Set("within", fmt.Sprint(params.WithinHours))
 		}
 		if len(query) > 0 {
 			urlPath += "?" + query.Encode()
@@ -125,38 +115,4 @@ func (c *Client) GetNetworkClient(ctx context.Context, siteID, clientID string) 
 	}
 
 	return &response.Data[0], nil
-}
-
-// BlockNetworkClient blocks a network client
-func (c *Client) BlockNetworkClient(ctx context.Context, siteID, clientID string) error {
-	if siteID == "" {
-		return fmt.Errorf("siteId is required")
-	}
-	if clientID == "" {
-		return fmt.Errorf("clientId is required")
-	}
-
-	err := c.do(ctx, http.MethodPost, fmt.Sprintf("/v1/sites/%s/clients/%s/block", siteID, clientID), nil, nil)
-	if err != nil {
-		return fmt.Errorf("failed to block network client: %w", err)
-	}
-
-	return nil
-}
-
-// UnblockNetworkClient unblocks a network client
-func (c *Client) UnblockNetworkClient(ctx context.Context, siteID, clientID string) error {
-	if siteID == "" {
-		return fmt.Errorf("siteId is required")
-	}
-	if clientID == "" {
-		return fmt.Errorf("clientId is required")
-	}
-
-	err := c.do(ctx, http.MethodPost, fmt.Sprintf("/v1/sites/%s/clients/%s/unblock", siteID, clientID), nil, nil)
-	if err != nil {
-		return fmt.Errorf("failed to unblock network client: %w", err)
-	}
-
-	return nil
 }

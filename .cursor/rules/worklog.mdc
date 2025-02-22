@@ -1,0 +1,15 @@
+---
+description: Tackling the outlying work for this project and as a scratchpad for how much we've gotten done.
+globs: 
+---
+# Overview
+
+This rule outlines the list of things that we have work to do on.  We will mark new items with an empty markdown checkbox ( [ ] ) and close items with [x].  We also keep a worklog of what was accomplished and how we accomplished it.
+
+# To Do List / Worklog
+
+- [ ] Develop integration tests for read-only endpoints (no integration tests that cause devices to restart or add/remove)
+- [ ] Modify logging output to use `log/slog`, removing overly verbose logging.  Tests shouldn't need to output everything.
+- [ ] Preference Setting in the CLI.  Store preferences in XDG-compliant paths.
+- [ ] Storing credentials in the MacOS Keychain
+

@@ -1,0 +1,1787 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>unifi-network-go: Go Coverage Report</title>
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">github.com/klauern/unifi-network-go/client.go (84.9%)</option>
+				
+				<option value="file1">github.com/klauern/unifi-network-go/clients.go (86.2%)</option>
+				
+				<option value="file2">github.com/klauern/unifi-network-go/cmd/unifi/clients.go (0.0%)</option>
+				
+				<option value="file3">github.com/klauern/unifi-network-go/cmd/unifi/devices.go (0.0%)</option>
+				
+				<option value="file4">github.com/klauern/unifi-network-go/cmd/unifi/info.go (0.0%)</option>
+				
+				<option value="file5">github.com/klauern/unifi-network-go/cmd/unifi/main.go (0.0%)</option>
+				
+				<option value="file6">github.com/klauern/unifi-network-go/cmd/unifi/sites.go (0.0%)</option>
+				
+				<option value="file7">github.com/klauern/unifi-network-go/cmd/unifi/vouchers.go (0.0%)</option>
+				
+				<option value="file8">github.com/klauern/unifi-network-go/devices.go (93.3%)</option>
+				
+				<option value="file9">github.com/klauern/unifi-network-go/hotspot_vouchers.go (96.9%)</option>
+				
+				<option value="file10">github.com/klauern/unifi-network-go/sites.go (64.0%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">not covered</span>
+				<span class="cov8">covered</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">package unifi
+
+import (
+        "bytes"
+        "context"
+        "crypto/tls"
+        "encoding/json"
+        "fmt"
+        "io"
+        "net/http"
+        "net/url"
+        "os"
+        "path"
+        "strings"
+)
+
+type Error struct {
+        Status      int    `json:"statusCode"`
+        StatusName  string `json:"statusName"`
+        Message     string `json:"message"`
+        Timestamp   string `json:"timestamp"`
+        RequestPath string `json:"requestPath"`
+        RequestID   string `json:"requestId"`
+}
+
+// Client represents a UniFi Network API client
+type Client struct {
+        baseURL    *url.URL
+        httpClient *http.Client
+        apiKey     string
+        insecure   bool
+}
+
+// ClientOption allows for customizing the client
+type ClientOption func(*Client)
+
+// WithHTTPClient sets a custom HTTP client
+func WithHTTPClient(httpClient *http.Client) ClientOption <span class="cov8" title="1">{
+        return func(c *Client) </span><span class="cov8" title="1">{
+                c.httpClient = httpClient
+        }</span>
+}
+
+// WithAPIKey sets the API key for authentication
+func WithAPIKey(apiKey string) ClientOption <span class="cov8" title="1">{
+        return func(c *Client) </span><span class="cov8" title="1">{
+                c.apiKey = apiKey
+        }</span>
+}
+
+// WithInsecure sets whether to skip TLS certificate verification
+func WithInsecure(insecure bool) ClientOption <span class="cov0" title="0">{
+        return func(c *Client) </span><span class="cov0" title="0">{
+                c.insecure = insecure
+        }</span>
+}
+
+// NewClient creates a new UniFi Network API client
+func NewClient(baseURL string, options ...ClientOption) (*Client, error) <span class="cov8" title="1">{
+        parsedURL, err := url.Parse(baseURL)
+        if err != nil </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("invalid base URL: %w", err)
+        }</span>
+
+        // Ensure the base path includes the API prefix
+        // First, trim any existing proxy/network/integration prefix to avoid doubles
+        <span class="cov8" title="1">trimmedPath := strings.TrimPrefix(parsedURL.Path, "/proxy/network/integration")
+        trimmedPath = strings.TrimPrefix(trimmedPath, "proxy/network/integration")
+        parsedURL.Path = path.Join("/proxy/network/integration", trimmedPath)
+
+        fmt.Fprintf(os.Stderr, "Base URL after adding API prefix: %s\n", parsedURL.String())
+
+        client := &amp;Client{
+                baseURL:    parsedURL,
+                httpClient: http.DefaultClient,
+        }
+
+        for _, opt := range options </span><span class="cov8" title="1">{
+                opt(client)
+        }</span>
+
+        <span class="cov8" title="1">if client.apiKey == "" </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("API key is required")
+        }</span>
+
+        // Configure TLS if insecure is set
+        <span class="cov8" title="1">if client.insecure </span><span class="cov0" title="0">{
+                transport := http.DefaultTransport.(*http.Transport).Clone()
+                transport.TLSClientConfig = &amp;tls.Config{
+                        InsecureSkipVerify: true,
+                }
+                client.httpClient = &amp;http.Client{
+                        Transport: transport,
+                }
+        }</span>
+
+        <span class="cov8" title="1">return client, nil</span>
+}
+
+// PaginatedResponse represents a paginated API response
+type PaginatedResponse struct {
+        Offset     int             `json:"offset"`
+        Limit      int             `json:"limit"`
+        Count      int             `json:"count"`
+        TotalCount int             `json:"totalCount"`
+        Data       json.RawMessage `json:"data"`
+}
+
+// ApplicationInfo represents the UniFi Network application information
+type ApplicationInfo struct {
+        ApplicationVersion string `json:"applicationVersion"` // Version of the UniFi Network application
+}
+
+// GetApplicationInfo retrieves generic information about the Network application
+func (c *Client) GetApplicationInfo(ctx context.Context) (*ApplicationInfo, error) <span class="cov8" title="1">{
+        var response ApplicationInfo
+        err := c.do(ctx, http.MethodGet, "/v1/info", nil, &amp;response)
+        if err != nil </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("failed to get application info: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">return &amp;response, nil</span>
+}
+
+func (c *Client) do(ctx context.Context, method, urlPath string, body interface{}, result interface{}) error <span class="cov8" title="1">{
+        u := *c.baseURL
+
+        // Split the path and query if present
+        pathParts := strings.Split(urlPath, "?")
+        u.Path = path.Join(u.Path, pathParts[0])
+
+        // Add query parameters if they exist
+        if len(pathParts) &gt; 1 </span><span class="cov8" title="1">{
+                u.RawQuery = pathParts[1]
+        }</span>
+
+        <span class="cov8" title="1">fmt.Fprintf(os.Stderr, "URL construction:\n")
+        fmt.Fprintf(os.Stderr, "  Base path: %s\n", c.baseURL.Path)
+        fmt.Fprintf(os.Stderr, "  URL path: %s\n", urlPath)
+        fmt.Fprintf(os.Stderr, "  Final path: %s\n", u.Path)
+        fmt.Fprintf(os.Stderr, "  Query params: %s\n", u.RawQuery)
+        fmt.Fprintf(os.Stderr, "  Final URL: %s\n", u.String())
+
+        var bodyReader io.Reader
+        if body != nil </span><span class="cov8" title="1">{
+                jsonBody, err := json.Marshal(body)
+                if err != nil </span><span class="cov0" title="0">{
+                        return fmt.Errorf("failed to marshal request body: %w", err)
+                }</span>
+                <span class="cov8" title="1">bodyReader = bytes.NewReader(jsonBody)
+                fmt.Fprintf(os.Stderr, "Request body: %s\n", string(jsonBody))</span>
+        }
+
+        <span class="cov8" title="1">req, err := http.NewRequestWithContext(ctx, method, u.String(), bodyReader)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to create request: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">req.Header.Set("Content-Type", "application/json")
+        req.Header.Set("Accept", "application/json")
+        req.Header.Set("X-API-KEY", c.apiKey)
+
+        fmt.Fprintf(os.Stderr, "Making %s request to: %s\n", method, u.String())
+        fmt.Fprintf(os.Stderr, "Headers: %v\n", req.Header)
+
+        resp, err := c.httpClient.Do(req)
+        if err != nil </span><span class="cov8" title="1">{
+                return fmt.Errorf("failed to execute request: %w", err)
+        }</span>
+        <span class="cov8" title="1">defer resp.Body.Close()
+
+        // Read the entire response body for debugging
+        respBody, err := io.ReadAll(resp.Body)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to read response body: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">fmt.Fprintf(os.Stderr, "Response status: %s\n", resp.Status)
+        fmt.Fprintf(os.Stderr, "Response body: %s\n", string(respBody))
+
+        if resp.StatusCode &gt;= 400 </span><span class="cov8" title="1">{
+                var apiErr Error
+                if err := json.Unmarshal(respBody, &amp;apiErr); err != nil </span><span class="cov0" title="0">{
+                        // If we can't decode the error response, return the raw response
+                        return fmt.Errorf("API error (status %d): %s", resp.StatusCode, string(respBody))
+                }</span>
+                <span class="cov8" title="1">return &amp;apiErr</span>
+        }
+
+        <span class="cov8" title="1">if result != nil </span><span class="cov8" title="1">{
+                if err := json.Unmarshal(respBody, result); err != nil </span><span class="cov0" title="0">{
+                        return fmt.Errorf("failed to decode response: %w\nResponse body: %s", err, string(respBody))
+                }</span>
+        }
+
+        <span class="cov8" title="1">return nil</span>
+}
+
+// Error implements the error interface for UniFi API errors
+func (e *Error) Error() string <span class="cov8" title="1">{
+        return fmt.Sprintf("%s: %s (status: %d, request: %s, id: %s)",
+                e.StatusName, e.Message, e.Status, e.RequestPath, e.RequestID)
+}</span>
+</pre>
+		
+		<pre class="file" id="file1" style="display: none">package unifi
+
+import (
+        "context"
+        "fmt"
+        "net/http"
+        "net/url"
+)
+
+// NetworkClient represents a connected client device per the UniFi API
+type NetworkClient struct {
+        ID             string  `json:"_id"`                     // Unique identifier
+        Name           string  `json:"name,required"`           // Client name
+        ConnectedAt    string  `json:"connectedAt"`             // Connection timestamp
+        IPAddress      string  `json:"ipAddress"`               // IP address
+        Type           string  `json:"type,required"`           // Connection type (WIRED, WIRELESS, VPN)
+        MACAddress     string  `json:"macAddress,required"`     // MAC address
+        UplinkDeviceID string  `json:"uplinkDeviceId,required"` // ID of the device this client is connected to
+        SiteID         string  `json:"site_id"`                 // Site identifier
+        Network        string  `json:"network"`                 // Network name
+        NetworkName    string  `json:"network_name"`            // Network display name
+        OUI            string  `json:"oui"`                     // Organizationally Unique Identifier
+        LastSeen       int64   `json:"last_seen"`               // Last seen timestamp
+        Uptime         int64   `json:"uptime"`                  // Connection uptime in seconds
+        IsWired        bool    `json:"is_wired"`                // Whether client is connected via wire
+        IsGuest        bool    `json:"is_guest"`                // Whether client is on guest network
+        DeviceID       string  `json:"device_id"`               // Connected device ID
+        DeviceName     string  `json:"device_name"`             // Connected device name
+        DeviceMAC      string  `json:"device_mac"`              // Connected device MAC
+        RxBytes        int64   `json:"rx_bytes"`                // Received bytes
+        TxBytes        int64   `json:"tx_bytes"`                // Transmitted bytes
+        RxRate         float64 `json:"rx_rate"`                 // Current receive rate
+        TxRate         float64 `json:"tx_rate"`                 // Current transmit rate
+        SignalStrength int     `json:"signal"`                  // Signal strength (for wireless)
+        NoiseFloor     int     `json:"noise"`                   // Noise floor (for wireless)
+        SNR            int     `json:"snr"`                     // Signal to noise ratio (for wireless)
+        Channel        int     `json:"channel"`                 // Wireless channel
+        RadioProtocol  string  `json:"radio_proto"`             // Radio protocol
+        RadioBand      string  `json:"radio"`                   // Radio band
+        SSID           string  `json:"essid"`                   // Connected SSID (for wireless)
+        BSSID          string  `json:"bssid"`                   // Connected BSSID (for wireless)
+        UseFixedIP     bool    `json:"use_fixedip"`             // Whether using fixed IP
+        FixedIP        string  `json:"fixed_ip"`                // Fixed IP address if set
+        NetworkID      string  `json:"network_id"`              // Network identifier
+}
+
+// ListNetworkClientsParams contains parameters for listing network clients
+type ListNetworkClientsParams struct {
+        Offset int `json:"offset,omitempty"` // Default: 0
+        Limit  int `json:"limit,omitempty"`  // [0..200] Default: 25
+}
+
+// ListNetworkClientsResponse represents the response from listing network clients
+type ListNetworkClientsResponse struct {
+        Offset     int             `json:"offset"`
+        Limit      int             `json:"limit"`
+        Count      int             `json:"count"`
+        TotalCount int             `json:"totalCount"`
+        Data       []NetworkClient `json:"data"`
+}
+
+// ListNetworkClients retrieves a paginated list of network clients for a site
+func (c *Client) ListNetworkClients(ctx context.Context, siteID string, params *ListNetworkClientsParams) (*ListNetworkClientsResponse, error) <span class="cov8" title="1">{
+        if siteID == "" </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("siteId is required")
+        }</span>
+
+        <span class="cov8" title="1">urlPath := fmt.Sprintf("/v1/sites/%s/clients", siteID)
+
+        if params != nil </span><span class="cov8" title="1">{
+                query := url.Values{}
+                if params.Offset &gt; 0 </span><span class="cov0" title="0">{
+                        query.Set("offset", fmt.Sprint(params.Offset))
+                }</span>
+                <span class="cov8" title="1">if params.Limit &gt; 0 </span><span class="cov8" title="1">{
+                        if params.Limit &gt; 200 </span><span class="cov8" title="1">{
+                                return nil, fmt.Errorf("limit must be between 0 and 200")
+                        }</span>
+                        <span class="cov8" title="1">query.Set("limit", fmt.Sprint(params.Limit))</span>
+                }
+                <span class="cov8" title="1">if len(query) &gt; 0 </span><span class="cov8" title="1">{
+                        urlPath += "?" + query.Encode()
+                }</span>
+        }
+
+        <span class="cov8" title="1">var response ListNetworkClientsResponse
+        err := c.do(ctx, http.MethodGet, urlPath, nil, &amp;response)
+        if err != nil </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("failed to list network clients: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">return &amp;response, nil</span>
+}
+
+// GetNetworkClient retrieves a specific network client by ID
+func (c *Client) GetNetworkClient(ctx context.Context, siteID, clientID string) (*NetworkClient, error) <span class="cov8" title="1">{
+        if siteID == "" </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("siteId is required")
+        }</span>
+        <span class="cov8" title="1">if clientID == "" </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("clientId is required")
+        }</span>
+
+        <span class="cov8" title="1">var response struct {
+                Data []NetworkClient `json:"data"`
+        }
+
+        err := c.do(ctx, http.MethodGet, fmt.Sprintf("/v1/sites/%s/clients/%s", siteID, clientID), nil, &amp;response)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to get network client: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">if len(response.Data) == 0 </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("network client not found: %s", clientID)
+        }</span>
+
+        <span class="cov8" title="1">return &amp;response.Data[0], nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file2" style="display: none">package main
+
+import (
+        "context"
+        "encoding/json"
+        "fmt"
+        "os"
+        "strings"
+
+        "github.com/klauern/unifi-network-go"
+        "github.com/urfave/cli/v2"
+)
+
+func clientsCommand() *cli.Command <span class="cov0" title="0">{
+        return &amp;cli.Command{
+                Name:    "clients",
+                Aliases: []string{"c"},
+                Usage:   "Manage UniFi network clients",
+                Subcommands: []*cli.Command{
+                        {
+                                Name:  "list",
+                                Usage: "List all network clients",
+                                Flags: []cli.Flag{
+                                        &amp;cli.StringFlag{
+                                                Name:    "site",
+                                                Aliases: []string{"s"},
+                                                Usage:   "Site ID",
+                                                Value:   "default",
+                                        },
+                                        &amp;cli.IntFlag{
+                                                Name:  "limit",
+                                                Usage: "Maximum number of clients to return (0-200)",
+                                                Value: 25,
+                                        },
+                                        &amp;cli.IntFlag{
+                                                Name:  "offset",
+                                                Usage: "Starting offset for pagination",
+                                                Value: 0,
+                                        },
+                                        &amp;cli.BoolFlag{
+                                                Name:  "json",
+                                                Usage: "Output in JSON format",
+                                                Value: false,
+                                        },
+                                },
+                                Action: func(c *cli.Context) error </span><span class="cov0" title="0">{
+                                        client, err := createClient(c)
+                                        if err != nil </span><span class="cov0" title="0">{
+                                                return err
+                                        }</span>
+
+                                        <span class="cov0" title="0">params := &amp;unifi.ListNetworkClientsParams{
+                                                Limit:  c.Int("limit"),
+                                                Offset: c.Int("offset"),
+                                        }
+
+                                        ctx := context.Background()
+                                        resp, err := client.ListNetworkClients(ctx, c.String("site"), params)
+                                        if err != nil </span><span class="cov0" title="0">{
+                                                return fmt.Errorf("failed to list network clients: %w", err)
+                                        }</span>
+
+                                        <span class="cov0" title="0">if c.Bool("json") </span><span class="cov0" title="0">{
+                                                return json.NewEncoder(os.Stdout).Encode(resp)
+                                        }</span>
+
+                                        // Table output
+                                        <span class="cov0" title="0">fmt.Printf("%-24s %-18s %-15s %-10s\n", "NAME", "MAC", "IP", "TYPE")
+                                        fmt.Println(strings.Repeat("-", 70))
+                                        for _, client := range resp.Data </span><span class="cov0" title="0">{
+                                                fmt.Printf("%-24s %-18s %-15s %-10s\n",
+                                                        truncateString(client.Name, 23),
+                                                        client.MACAddress,
+                                                        client.IPAddress,
+                                                        client.Type,
+                                                )
+                                        }</span>
+
+                                        <span class="cov0" title="0">fmt.Printf("\nShowing %d of %d clients (offset: %d)\n",
+                                                resp.Count, resp.TotalCount, resp.Offset)
+                                        return nil</span>
+                                },
+                        },
+                },
+        }
+}
+
+func truncateString(str string, length int) string <span class="cov0" title="0">{
+        if len(str) &lt;= length </span><span class="cov0" title="0">{
+                return str
+        }</span>
+        <span class="cov0" title="0">return str[:length-3] + "..."</span>
+}
+</pre>
+		
+		<pre class="file" id="file3" style="display: none">package main
+
+import (
+        "context"
+        "encoding/json"
+        "fmt"
+        "os"
+        "strings"
+
+        "github.com/klauern/unifi-network-go"
+        "github.com/urfave/cli/v2"
+)
+
+func devicesCommand() *cli.Command <span class="cov0" title="0">{
+        return &amp;cli.Command{
+                Name:    "devices",
+                Aliases: []string{"d"},
+                Usage:   "Manage UniFi network devices",
+                Subcommands: []*cli.Command{
+                        {
+                                Name:  "list",
+                                Usage: "List all network devices",
+                                Flags: []cli.Flag{
+                                        &amp;cli.StringFlag{
+                                                Name:    "site",
+                                                Aliases: []string{"s"},
+                                                Usage:   "Site ID",
+                                                Value:   "default",
+                                        },
+                                        &amp;cli.IntFlag{
+                                                Name:  "limit",
+                                                Usage: "Maximum number of devices to return",
+                                                Value: 25,
+                                        },
+                                        &amp;cli.StringFlag{
+                                                Name:  "type",
+                                                Usage: "Filter by device type",
+                                        },
+                                        &amp;cli.BoolFlag{
+                                                Name:  "json",
+                                                Usage: "Output in JSON format",
+                                                Value: false,
+                                        },
+                                },
+                                Action: func(c *cli.Context) error </span><span class="cov0" title="0">{
+                                        client, err := createClient(c)
+                                        if err != nil </span><span class="cov0" title="0">{
+                                                return err
+                                        }</span>
+
+                                        <span class="cov0" title="0">params := &amp;unifi.ListDevicesParams{
+                                                Limit: c.Int("limit"),
+                                                Type:  c.String("type"),
+                                        }
+
+                                        ctx := context.Background()
+                                        resp, err := client.ListDevices(ctx, c.String("site"), params)
+                                        if err != nil </span><span class="cov0" title="0">{
+                                                return fmt.Errorf("failed to list devices: %w", err)
+                                        }</span>
+
+                                        <span class="cov0" title="0">if c.Bool("json") </span><span class="cov0" title="0">{
+                                                return json.NewEncoder(os.Stdout).Encode(resp.Data)
+                                        }</span>
+
+                                        // Table output
+                                        <span class="cov0" title="0">fmt.Printf("%-24s %-18s %-15s %-12s %-8s\n", "NAME", "MAC", "IP", "MODEL", "STATUS")
+                                        fmt.Println(strings.Repeat("-", 80))
+                                        for _, device := range resp.Data </span><span class="cov0" title="0">{
+                                                status := "Offline"
+                                                if device.State == 1 </span><span class="cov0" title="0">{
+                                                        status = "Online"
+                                                }</span>
+                                                <span class="cov0" title="0">if device.Disabled </span><span class="cov0" title="0">{
+                                                        status = "Disabled"
+                                                }</span>
+
+                                                <span class="cov0" title="0">fmt.Printf("%-24s %-18s %-15s %-12s %-8s\n",
+                                                        truncateString(device.Name, 23),
+                                                        device.MAC,
+                                                        device.IP,
+                                                        device.Model,
+                                                        status,
+                                                )</span>
+                                        }
+
+                                        <span class="cov0" title="0">return nil</span>
+                                },
+                        },
+                        {
+                                Name:  "get",
+                                Usage: "Get device details",
+                                Flags: []cli.Flag{
+                                        &amp;cli.StringFlag{
+                                                Name:     "id",
+                                                Usage:    "Device ID",
+                                                Required: true,
+                                        },
+                                        &amp;cli.StringFlag{
+                                                Name:    "site",
+                                                Aliases: []string{"s"},
+                                                Usage:   "Site ID",
+                                                Value:   "default",
+                                        },
+                                },
+                                Action: func(c *cli.Context) error <span class="cov0" title="0">{
+                                        client, err := createClient(c)
+                                        if err != nil </span><span class="cov0" title="0">{
+                                                return err
+                                        }</span>
+
+                                        <span class="cov0" title="0">ctx := context.Background()
+                                        device, err := client.GetDevice(ctx, c.String("site"), c.String("id"))
+                                        if err != nil </span><span class="cov0" title="0">{
+                                                return fmt.Errorf("failed to get device: %w", err)
+                                        }</span>
+
+                                        <span class="cov0" title="0">return json.NewEncoder(os.Stdout).Encode(device)</span>
+                                },
+                        },
+                        {
+                                Name:  "stats",
+                                Usage: "Get device statistics",
+                                Flags: []cli.Flag{
+                                        &amp;cli.StringFlag{
+                                                Name:     "id",
+                                                Usage:    "Device ID",
+                                                Required: true,
+                                        },
+                                        &amp;cli.StringFlag{
+                                                Name:    "site",
+                                                Aliases: []string{"s"},
+                                                Usage:   "Site ID",
+                                                Value:   "default",
+                                        },
+                                },
+                                Action: func(c *cli.Context) error <span class="cov0" title="0">{
+                                        client, err := createClient(c)
+                                        if err != nil </span><span class="cov0" title="0">{
+                                                return err
+                                        }</span>
+
+                                        <span class="cov0" title="0">ctx := context.Background()
+                                        stats, err := client.GetDeviceStatistics(ctx, c.String("site"), c.String("id"))
+                                        if err != nil </span><span class="cov0" title="0">{
+                                                return fmt.Errorf("failed to get device statistics: %w", err)
+                                        }</span>
+
+                                        <span class="cov0" title="0">return json.NewEncoder(os.Stdout).Encode(stats)</span>
+                                },
+                        },
+                        {
+                                Name:  "action",
+                                Usage: "Execute device action (restart, adopt, forget)",
+                                Flags: []cli.Flag{
+                                        &amp;cli.StringFlag{
+                                                Name:     "id",
+                                                Usage:    "Device ID",
+                                                Required: true,
+                                        },
+                                        &amp;cli.StringFlag{
+                                                Name:    "site",
+                                                Aliases: []string{"s"},
+                                                Usage:   "Site ID",
+                                                Value:   "default",
+                                        },
+                                        &amp;cli.StringFlag{
+                                                Name:     "action",
+                                                Usage:    "Action to perform (restart, adopt, forget)",
+                                                Required: true,
+                                        },
+                                },
+                                Action: func(c *cli.Context) error <span class="cov0" title="0">{
+                                        client, err := createClient(c)
+                                        if err != nil </span><span class="cov0" title="0">{
+                                                return err
+                                        }</span>
+
+                                        <span class="cov0" title="0">action := &amp;unifi.DeviceAction{
+                                                Action: c.String("action"),
+                                        }
+
+                                        ctx := context.Background()
+                                        err = client.ExecuteDeviceAction(ctx, c.String("site"), c.String("id"), action)
+                                        if err != nil </span><span class="cov0" title="0">{
+                                                return fmt.Errorf("failed to execute device action: %w", err)
+                                        }</span>
+
+                                        <span class="cov0" title="0">fmt.Printf("Successfully executed %s action on device %s\n", action.Action, c.String("id"))
+                                        return nil</span>
+                                },
+                        },
+                        {
+                                Name:  "port",
+                                Usage: "Execute port action (reset, enable, disable)",
+                                Flags: []cli.Flag{
+                                        &amp;cli.StringFlag{
+                                                Name:     "id",
+                                                Usage:    "Device ID",
+                                                Required: true,
+                                        },
+                                        &amp;cli.StringFlag{
+                                                Name:    "site",
+                                                Aliases: []string{"s"},
+                                                Usage:   "Site ID",
+                                                Value:   "default",
+                                        },
+                                        &amp;cli.StringFlag{
+                                                Name:     "action",
+                                                Usage:    "Action to perform (reset, enable, disable)",
+                                                Required: true,
+                                        },
+                                        &amp;cli.IntFlag{
+                                                Name:     "port-idx",
+                                                Usage:    "Port index number",
+                                                Required: true,
+                                        },
+                                        &amp;cli.StringFlag{
+                                                Name:  "port-id",
+                                                Usage: "Port identifier",
+                                        },
+                                },
+                                Action: func(c *cli.Context) error <span class="cov0" title="0">{
+                                        client, err := createClient(c)
+                                        if err != nil </span><span class="cov0" title="0">{
+                                                return err
+                                        }</span>
+
+                                        <span class="cov0" title="0">action := &amp;unifi.DevicePortAction{
+                                                PortIDX: c.Int("port-idx"),
+                                                PortID:  c.String("port-id"),
+                                                Action:  c.String("action"),
+                                        }
+
+                                        ctx := context.Background()
+                                        err = client.ExecutePortAction(ctx, c.String("site"), c.String("id"), action)
+                                        if err != nil </span><span class="cov0" title="0">{
+                                                return fmt.Errorf("failed to execute port action: %w", err)
+                                        }</span>
+
+                                        <span class="cov0" title="0">fmt.Printf("Successfully executed %s action on port %d of device %s\n",
+                                                action.Action, action.PortIDX, c.String("id"))
+                                        return nil</span>
+                                },
+                        },
+                },
+        }
+}
+</pre>
+		
+		<pre class="file" id="file4" style="display: none">package main
+
+import (
+        "context"
+        "encoding/json"
+        "fmt"
+        "os"
+
+        "github.com/urfave/cli/v2"
+)
+
+func appInfoCommand() *cli.Command <span class="cov0" title="0">{
+        return &amp;cli.Command{
+                Name:    "info",
+                Aliases: []string{"i"},
+                Usage:   "Get UniFi Network application information",
+                Flags: []cli.Flag{
+                        &amp;cli.BoolFlag{
+                                Name:  "json",
+                                Usage: "Output in JSON format",
+                                Value: false,
+                        },
+                },
+                Action: func(c *cli.Context) error </span><span class="cov0" title="0">{
+                        client, err := createClient(c)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return err
+                        }</span>
+
+                        <span class="cov0" title="0">ctx := context.Background()
+                        info, err := client.GetApplicationInfo(ctx)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return fmt.Errorf("failed to get application info: %w", err)
+                        }</span>
+
+                        <span class="cov0" title="0">if c.Bool("json") </span><span class="cov0" title="0">{
+                                return json.NewEncoder(os.Stdout).Encode(info)
+                        }</span>
+
+                        <span class="cov0" title="0">fmt.Printf("UniFi Network Version: %s\n", info.ApplicationVersion)
+                        return nil</span>
+                },
+        }
+}
+</pre>
+		
+		<pre class="file" id="file5" style="display: none">package main
+
+import (
+        "fmt"
+        "os"
+
+        "github.com/klauern/unifi-network-go"
+        "github.com/urfave/cli/v2"
+)
+
+func main() <span class="cov0" title="0">{
+        app := &amp;cli.App{
+                Name:  "unifi",
+                Usage: "UniFi Network API CLI",
+                Flags: []cli.Flag{
+                        &amp;cli.StringFlag{
+                                Name:     "url",
+                                Usage:    "UniFi Network Controller URL",
+                                EnvVars:  []string{"UNIFI_URL"},
+                                Required: true,
+                        },
+                        &amp;cli.StringFlag{
+                                Name:     "api-key",
+                                Usage:    "UniFi Network API Key",
+                                EnvVars:  []string{"UNIFI_API_KEY"},
+                                Required: true,
+                        },
+                        &amp;cli.BoolFlag{
+                                Name:    "insecure",
+                                Usage:   "Skip TLS certificate verification",
+                                EnvVars: []string{"UNIFI_INSECURE"},
+                        },
+                },
+                Commands: []*cli.Command{
+                        clientsCommand(),
+                        devicesCommand(),
+                        hotspotVouchersCommand(),
+                        sitesCommand(),
+                        appInfoCommand(),
+                },
+        }
+
+        if err := app.Run(os.Args); err != nil </span><span class="cov0" title="0">{
+                fmt.Fprintf(os.Stderr, "error: %v\n", err)
+                os.Exit(1)
+        }</span>
+}
+
+func createClient(c *cli.Context) (*unifi.Client, error) <span class="cov0" title="0">{
+        client, err := unifi.NewClient(
+                c.String("url"),
+                unifi.WithAPIKey(c.String("api-key")),
+                unifi.WithInsecure(c.Bool("insecure")),
+        )
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to create client: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">return client, nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file6" style="display: none">package main
+
+import (
+        "context"
+        "encoding/json"
+        "fmt"
+        "os"
+        "strings"
+
+        "github.com/klauern/unifi-network-go"
+        "github.com/urfave/cli/v2"
+)
+
+func sitesCommand() *cli.Command <span class="cov0" title="0">{
+        return &amp;cli.Command{
+                Name:    "sites",
+                Aliases: []string{"s"},
+                Usage:   "Manage UniFi sites",
+                Subcommands: []*cli.Command{
+                        {
+                                Name:  "list",
+                                Usage: "List all sites",
+                                Flags: []cli.Flag{
+                                        &amp;cli.IntFlag{
+                                                Name:  "limit",
+                                                Usage: "Maximum number of sites to return (0-200)",
+                                                Value: 25,
+                                        },
+                                        &amp;cli.IntFlag{
+                                                Name:  "offset",
+                                                Usage: "Starting offset for pagination",
+                                                Value: 0,
+                                        },
+                                        &amp;cli.BoolFlag{
+                                                Name:  "json",
+                                                Usage: "Output in JSON format",
+                                                Value: false,
+                                        },
+                                },
+                                Action: func(c *cli.Context) error </span><span class="cov0" title="0">{
+                                        client, err := createClient(c)
+                                        if err != nil </span><span class="cov0" title="0">{
+                                                return err
+                                        }</span>
+
+                                        <span class="cov0" title="0">params := &amp;unifi.ListSitesParams{
+                                                Limit:  c.Int("limit"),
+                                                Offset: c.Int("offset"),
+                                        }
+
+                                        ctx := context.Background()
+                                        resp, err := client.ListSites(ctx, params)
+                                        if err != nil </span><span class="cov0" title="0">{
+                                                return fmt.Errorf("failed to list sites: %w", err)
+                                        }</span>
+
+                                        <span class="cov0" title="0">if c.Bool("json") </span><span class="cov0" title="0">{
+                                                return json.NewEncoder(os.Stdout).Encode(resp)
+                                        }</span>
+
+                                        // Table output
+                                        <span class="cov0" title="0">fmt.Printf("%-36s %-24s\n", "ID", "NAME")
+                                        fmt.Println(strings.Repeat("-", 62))
+                                        for _, site := range resp.Data </span><span class="cov0" title="0">{
+                                                fmt.Printf("%-36s %-24s\n",
+                                                        site.ID,
+                                                        truncateString(site.Name, 23),
+                                                )
+                                        }</span>
+
+                                        <span class="cov0" title="0">fmt.Printf("\nShowing %d of %d sites (offset: %d)\n",
+                                                resp.Count, resp.TotalCount, resp.Offset)
+                                        return nil</span>
+                                },
+                        },
+                        {
+                                Name:  "get",
+                                Usage: "Get site details",
+                                Flags: []cli.Flag{
+                                        &amp;cli.StringFlag{
+                                                Name:     "id",
+                                                Usage:    "Site ID",
+                                                Required: true,
+                                        },
+                                },
+                                Action: func(c *cli.Context) error <span class="cov0" title="0">{
+                                        client, err := createClient(c)
+                                        if err != nil </span><span class="cov0" title="0">{
+                                                return err
+                                        }</span>
+
+                                        <span class="cov0" title="0">ctx := context.Background()
+                                        site, err := client.GetSite(ctx, c.String("id"))
+                                        if err != nil </span><span class="cov0" title="0">{
+                                                return fmt.Errorf("failed to get site: %w", err)
+                                        }</span>
+
+                                        <span class="cov0" title="0">return json.NewEncoder(os.Stdout).Encode(site)</span>
+                                },
+                        },
+                },
+        }
+}
+</pre>
+		
+		<pre class="file" id="file7" style="display: none">package main
+
+import (
+        "context"
+        "encoding/json"
+        "fmt"
+        "os"
+        "strings"
+
+        "github.com/klauern/unifi-network-go"
+        "github.com/urfave/cli/v2"
+)
+
+func hotspotVouchersCommand() *cli.Command <span class="cov0" title="0">{
+        return &amp;cli.Command{
+                Name:    "vouchers",
+                Aliases: []string{"v"},
+                Usage:   "Manage UniFi hotspot vouchers",
+                Subcommands: []*cli.Command{
+                        {
+                                Name:  "list",
+                                Usage: "List all hotspot vouchers",
+                                Flags: []cli.Flag{
+                                        &amp;cli.StringFlag{
+                                                Name:    "site",
+                                                Aliases: []string{"s"},
+                                                Usage:   "Site ID",
+                                                Value:   "default",
+                                        },
+                                        &amp;cli.IntFlag{
+                                                Name:  "limit",
+                                                Usage: "Maximum number of vouchers to return",
+                                                Value: 25,
+                                        },
+                                        &amp;cli.BoolFlag{
+                                                Name:  "json",
+                                                Usage: "Output in JSON format",
+                                                Value: false,
+                                        },
+                                },
+                                Action: func(c *cli.Context) error </span><span class="cov0" title="0">{
+                                        client, err := createClient(c)
+                                        if err != nil </span><span class="cov0" title="0">{
+                                                return err
+                                        }</span>
+
+                                        <span class="cov0" title="0">params := &amp;unifi.ListHotspotVouchersParams{
+                                                Limit: c.Int("limit"),
+                                        }
+
+                                        ctx := context.Background()
+                                        resp, err := client.ListHotspotVouchers(ctx, c.String("site"), params)
+                                        if err != nil </span><span class="cov0" title="0">{
+                                                return fmt.Errorf("failed to list vouchers: %w", err)
+                                        }</span>
+
+                                        <span class="cov0" title="0">if c.Bool("json") </span><span class="cov0" title="0">{
+                                                return json.NewEncoder(os.Stdout).Encode(resp.Data)
+                                        }</span>
+
+                                        // Table output
+                                        <span class="cov0" title="0">fmt.Printf("%-24s %-12s %-15s %-10s %-8s\n", "NOTE", "CODE", "EXPIRES", "LIMIT", "STATUS")
+                                        fmt.Println(strings.Repeat("-", 80))
+                                        for _, voucher := range resp.Data </span><span class="cov0" title="0">{
+                                                expires := "Never"
+                                                if voucher.ExpiresAt != "" </span><span class="cov0" title="0">{
+                                                        expires = voucher.ExpiresAt
+                                                }</span>
+                                                <span class="cov0" title="0">status := "Active"
+                                                if voucher.Expired </span><span class="cov0" title="0">{
+                                                        status = "Expired"
+                                                }</span>
+
+                                                <span class="cov0" title="0">fmt.Printf("%-24s %-12s %-15s %-10d %-8s\n",
+                                                        truncateString(voucher.Name, 23),
+                                                        voucher.Code,
+                                                        expires,
+                                                        voucher.TimeLimitMinutes,
+                                                        status,
+                                                )</span>
+                                        }
+
+                                        <span class="cov0" title="0">return nil</span>
+                                },
+                        },
+                        {
+                                Name:  "create",
+                                Usage: "Create a new hotspot voucher",
+                                Flags: []cli.Flag{
+                                        &amp;cli.StringFlag{
+                                                Name:    "site",
+                                                Aliases: []string{"s"},
+                                                Usage:   "Site ID",
+                                                Value:   "default",
+                                        },
+                                        &amp;cli.StringFlag{
+                                                Name:     "note",
+                                                Usage:    "Voucher note",
+                                                Required: true,
+                                        },
+                                        &amp;cli.IntFlag{
+                                                Name:     "duration",
+                                                Usage:    "Duration in minutes",
+                                                Required: true,
+                                        },
+                                        &amp;cli.IntFlag{
+                                                Name:  "guest-limit",
+                                                Usage: "Maximum number of guests per voucher",
+                                        },
+                                        &amp;cli.IntFlag{
+                                                Name:  "data-limit",
+                                                Usage: "Data usage limit in MB",
+                                        },
+                                        &amp;cli.IntFlag{
+                                                Name:  "down-limit",
+                                                Usage: "Download rate limit in Kbps",
+                                        },
+                                        &amp;cli.IntFlag{
+                                                Name:  "up-limit",
+                                                Usage: "Upload rate limit in Kbps",
+                                        },
+                                        &amp;cli.IntFlag{
+                                                Name:  "count",
+                                                Usage: "Number of vouchers to create",
+                                                Value: 1,
+                                        },
+                                },
+                                Action: func(c *cli.Context) error <span class="cov0" title="0">{
+                                        client, err := createClient(c)
+                                        if err != nil </span><span class="cov0" title="0">{
+                                                return err
+                                        }</span>
+
+                                        <span class="cov0" title="0">request := &amp;unifi.CreateHotspotVoucherRequest{
+                                                Note:             c.String("note"),
+                                                Duration:         c.Int("duration"),
+                                                TimeLimitMinutes: c.Int("duration"),
+                                                Count:            c.Int("count"),
+                                        }
+
+                                        if c.IsSet("guest-limit") </span><span class="cov0" title="0">{
+                                                request.AuthorizeGuestLimit = c.Int("guest-limit")
+                                        }</span>
+                                        <span class="cov0" title="0">if c.IsSet("data-limit") </span><span class="cov0" title="0">{
+                                                request.DataUsageLimitMB = c.Int("data-limit")
+                                        }</span>
+                                        <span class="cov0" title="0">if c.IsSet("down-limit") </span><span class="cov0" title="0">{
+                                                request.DownRateLimitKbps = c.Int("down-limit")
+                                        }</span>
+                                        <span class="cov0" title="0">if c.IsSet("up-limit") </span><span class="cov0" title="0">{
+                                                request.UpRateLimitKbps = c.Int("up-limit")
+                                        }</span>
+
+                                        <span class="cov0" title="0">ctx := context.Background()
+                                        resp, err := client.CreateHotspotVoucher(ctx, c.String("site"), request)
+                                        if err != nil </span><span class="cov0" title="0">{
+                                                return fmt.Errorf("failed to create voucher: %w", err)
+                                        }</span>
+
+                                        <span class="cov0" title="0">return json.NewEncoder(os.Stdout).Encode(resp.Data)</span>
+                                },
+                        },
+                        {
+                                Name:  "generate",
+                                Usage: "Generate multiple hotspot vouchers",
+                                Flags: []cli.Flag{
+                                        &amp;cli.StringFlag{
+                                                Name:    "site",
+                                                Aliases: []string{"s"},
+                                                Usage:   "Site ID",
+                                                Value:   "default",
+                                        },
+                                        &amp;cli.StringFlag{
+                                                Name:     "name",
+                                                Usage:    "Voucher note (applied to all generated vouchers)",
+                                                Required: true,
+                                        },
+                                        &amp;cli.IntFlag{
+                                                Name:  "count",
+                                                Usage: "Number of vouchers to generate (1-10000)",
+                                                Value: 1,
+                                        },
+                                        &amp;cli.IntFlag{
+                                                Name:     "time-limit",
+                                                Usage:    "Time limit in minutes (1-1000000)",
+                                                Required: true,
+                                        },
+                                        &amp;cli.IntFlag{
+                                                Name:  "guest-limit",
+                                                Usage: "Maximum number of guests per voucher",
+                                        },
+                                        &amp;cli.IntFlag{
+                                                Name:  "data-limit",
+                                                Usage: "Data usage limit in MB (1-1046576)",
+                                        },
+                                        &amp;cli.IntFlag{
+                                                Name:  "down-limit",
+                                                Usage: "Download rate limit in Kbps (2-100000)",
+                                        },
+                                        &amp;cli.IntFlag{
+                                                Name:  "up-limit",
+                                                Usage: "Upload rate limit in Kbps (2-100000)",
+                                        },
+                                },
+                                Action: func(c *cli.Context) error <span class="cov0" title="0">{
+                                        client, err := createClient(c)
+                                        if err != nil </span><span class="cov0" title="0">{
+                                                return err
+                                        }</span>
+
+                                        <span class="cov0" title="0">request := &amp;unifi.GenerateHotspotVouchersRequest{
+                                                Count:            c.Int("count"),
+                                                Name:             c.String("name"),
+                                                TimeLimitMinutes: c.Int("time-limit"),
+                                        }
+
+                                        if c.IsSet("guest-limit") </span><span class="cov0" title="0">{
+                                                request.AuthorizeGuestLimit = c.Int("guest-limit")
+                                        }</span>
+                                        <span class="cov0" title="0">if c.IsSet("data-limit") </span><span class="cov0" title="0">{
+                                                request.DataUsageLimitMB = c.Int("data-limit")
+                                        }</span>
+                                        <span class="cov0" title="0">if c.IsSet("down-limit") </span><span class="cov0" title="0">{
+                                                request.RxRateLimitKbps = c.Int("down-limit")
+                                        }</span>
+                                        <span class="cov0" title="0">if c.IsSet("up-limit") </span><span class="cov0" title="0">{
+                                                request.TxRateLimitKbps = c.Int("up-limit")
+                                        }</span>
+
+                                        <span class="cov0" title="0">ctx := context.Background()
+                                        resp, err := client.GenerateHotspotVouchers(ctx, c.String("site"), request)
+                                        if err != nil </span><span class="cov0" title="0">{
+                                                return fmt.Errorf("failed to generate vouchers: %w", err)
+                                        }</span>
+
+                                        <span class="cov0" title="0">return json.NewEncoder(os.Stdout).Encode(resp.Data)</span>
+                                },
+                        },
+                        {
+                                Name:  "get",
+                                Usage: "Get voucher details",
+                                Flags: []cli.Flag{
+                                        &amp;cli.StringFlag{
+                                                Name:     "id",
+                                                Usage:    "Voucher ID",
+                                                Required: true,
+                                        },
+                                        &amp;cli.StringFlag{
+                                                Name:    "site",
+                                                Aliases: []string{"s"},
+                                                Usage:   "Site ID",
+                                                Value:   "default",
+                                        },
+                                },
+                                Action: func(c *cli.Context) error <span class="cov0" title="0">{
+                                        client, err := createClient(c)
+                                        if err != nil </span><span class="cov0" title="0">{
+                                                return err
+                                        }</span>
+
+                                        <span class="cov0" title="0">ctx := context.Background()
+                                        voucher, err := client.GetVoucherDetails(ctx, c.String("site"), c.String("id"))
+                                        if err != nil </span><span class="cov0" title="0">{
+                                                return fmt.Errorf("failed to get voucher details: %w", err)
+                                        }</span>
+
+                                        <span class="cov0" title="0">return json.NewEncoder(os.Stdout).Encode(voucher)</span>
+                                },
+                        },
+                        {
+                                Name:  "delete",
+                                Usage: "Delete a voucher",
+                                Flags: []cli.Flag{
+                                        &amp;cli.StringFlag{
+                                                Name:     "id",
+                                                Usage:    "Voucher ID",
+                                                Required: true,
+                                        },
+                                        &amp;cli.StringFlag{
+                                                Name:    "site",
+                                                Aliases: []string{"s"},
+                                                Usage:   "Site ID",
+                                                Value:   "default",
+                                        },
+                                },
+                                Action: func(c *cli.Context) error <span class="cov0" title="0">{
+                                        client, err := createClient(c)
+                                        if err != nil </span><span class="cov0" title="0">{
+                                                return err
+                                        }</span>
+
+                                        <span class="cov0" title="0">ctx := context.Background()
+                                        err = client.DeleteHotspotVoucher(ctx, c.String("site"), c.String("id"))
+                                        if err != nil </span><span class="cov0" title="0">{
+                                                return fmt.Errorf("failed to delete voucher: %w", err)
+                                        }</span>
+
+                                        <span class="cov0" title="0">fmt.Printf("Successfully deleted voucher %s\n", c.String("id"))
+                                        return nil</span>
+                                },
+                        },
+                },
+        }
+}
+</pre>
+		
+		<pre class="file" id="file8" style="display: none">package unifi
+
+import (
+        "context"
+        "fmt"
+        "net/http"
+        "net/url"
+)
+
+// Device represents a UniFi network device
+type Device struct {
+        ID         string `json:"_id"`
+        MAC        string `json:"mac"`
+        Model      string `json:"model"`
+        Type       string `json:"type"`
+        Name       string `json:"name"`
+        SiteID     string `json:"site_id"`
+        IP         string `json:"ip"`
+        Version    string `json:"version"`
+        Adopted    bool   `json:"adopted"`
+        Disabled   bool   `json:"disabled"`
+        Uptime     int64  `json:"uptime"`
+        LastSeen   int64  `json:"last_seen"`
+        Upgradable bool   `json:"upgradable"`
+        State      int    `json:"state"`
+        LastUplink string `json:"last_uplink"`
+        UplinkMAC  string `json:"uplink"`
+}
+
+// DevicePortAction represents the action to perform on a device port
+type DevicePortAction struct {
+        PortIDX int    `json:"portIdx"` // Port index number
+        PortID  string `json:"portId"`  // Port identifier
+        Action  string `json:"action"`  // Action to perform (e.g., "reset", "enable", "disable")
+}
+
+// DeviceAction represents the action to perform on a device
+type DeviceAction struct {
+        Action string `json:"cmd"` // Action to perform (e.g., "restart", "adopt", "forget")
+}
+
+// DeviceStatistics represents the latest statistics for a device
+type DeviceStatistics struct {
+        ID          string  `json:"_id"`
+        MAC         string  `json:"mac"`
+        RxBytes     int64   `json:"rx_bytes"`
+        TxBytes     int64   `json:"tx_bytes"`
+        RxRate      float64 `json:"rx_rate"`
+        TxRate      float64 `json:"tx_rate"`
+        RxPackets   int64   `json:"rx_packets"`
+        TxPackets   int64   `json:"tx_packets"`
+        RxErrors    int64   `json:"rx_errors"`
+        TxErrors    int64   `json:"tx_errors"`
+        RxDropped   int64   `json:"rx_dropped"`
+        TxDropped   int64   `json:"tx_dropped"`
+        RxMulticast int64   `json:"rx_multicast"`
+        TxMulticast int64   `json:"tx_multicast"`
+        RxBroadcast int64   `json:"rx_broadcast"`
+        TxBroadcast int64   `json:"tx_broadcast"`
+        BytesR      int64   `json:"bytes-r"`    // Total bytes in last interval
+        RxBytesR    int64   `json:"rx_bytes-r"` // Received bytes in last interval
+        TxBytesR    int64   `json:"tx_bytes-r"` // Transmitted bytes in last interval
+        CPU         float64 `json:"cpu"`        // CPU usage percentage
+        Memory      float64 `json:"mem"`        // Memory usage percentage
+        SystemStats struct {
+                Temperature float64 `json:"temperature"` // Device temperature
+                FanLevel    int     `json:"fan_level"`   // Fan level (if applicable)
+        } `json:"system-stats"`
+        Uptime int64 `json:"uptime"` // Device uptime in seconds
+}
+
+// ListDevicesParams contains parameters for listing devices
+type ListDevicesParams struct {
+        Offset int    `json:"offset,omitempty"`
+        Limit  int    `json:"limit,omitempty"`
+        Type   string `json:"type,omitempty"`
+}
+
+// ListDevicesResponse represents the response from listing devices
+type ListDevicesResponse struct {
+        PaginatedResponse
+        Data []Device `json:"data"`
+}
+
+// ListDevices retrieves a paginated list of devices for a site
+func (c *Client) ListDevices(ctx context.Context, siteID string, params *ListDevicesParams) (*ListDevicesResponse, error) <span class="cov8" title="1">{
+        urlPath := fmt.Sprintf("/v1/sites/%s/devices", siteID)
+
+        if params != nil </span><span class="cov8" title="1">{
+                query := url.Values{}
+                if params.Offset &gt; 0 </span><span class="cov0" title="0">{
+                        query.Set("offset", fmt.Sprint(params.Offset))
+                }</span>
+                <span class="cov8" title="1">if params.Limit &gt; 0 </span><span class="cov8" title="1">{
+                        query.Set("limit", fmt.Sprint(params.Limit))
+                }</span>
+                <span class="cov8" title="1">if params.Type != "" </span><span class="cov0" title="0">{
+                        query.Set("type", params.Type)
+                }</span>
+                <span class="cov8" title="1">if len(query) &gt; 0 </span><span class="cov8" title="1">{
+                        urlPath += "?" + query.Encode()
+                }</span>
+        }
+
+        <span class="cov8" title="1">var response ListDevicesResponse
+        err := c.do(ctx, http.MethodGet, urlPath, nil, &amp;response)
+        if err != nil </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("failed to list devices: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">return &amp;response, nil</span>
+}
+
+// GetDevice retrieves a specific device by ID
+func (c *Client) GetDevice(ctx context.Context, siteID, deviceID string) (*Device, error) <span class="cov8" title="1">{
+        var response struct {
+                Data []Device `json:"data"`
+        }
+
+        err := c.do(ctx, http.MethodGet, fmt.Sprintf("/v1/sites/%s/devices/%s", siteID, deviceID), nil, &amp;response)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to get device: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">if len(response.Data) == 0 </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("device not found: %s", deviceID)
+        }</span>
+
+        <span class="cov8" title="1">return &amp;response.Data[0], nil</span>
+}
+
+// ExecutePortAction performs an action on a specific port of a device
+func (c *Client) ExecutePortAction(ctx context.Context, siteID, deviceID string, action *DevicePortAction) error <span class="cov8" title="1">{
+        if action == nil </span><span class="cov8" title="1">{
+                return fmt.Errorf("action cannot be nil")
+        }</span>
+
+        <span class="cov8" title="1">urlPath := fmt.Sprintf("/v1/sites/%s/devices/%s/port/%s", siteID, deviceID, action.PortID)
+        err := c.do(ctx, http.MethodPost, urlPath, action, nil)
+        if err != nil </span><span class="cov8" title="1">{
+                return fmt.Errorf("failed to execute port action: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">return nil</span>
+}
+
+// ExecuteDeviceAction performs an action on a device
+func (c *Client) ExecuteDeviceAction(ctx context.Context, siteID, deviceID string, action *DeviceAction) error <span class="cov8" title="1">{
+        if action == nil </span><span class="cov8" title="1">{
+                return fmt.Errorf("action cannot be nil")
+        }</span>
+
+        <span class="cov8" title="1">urlPath := fmt.Sprintf("/v1/sites/%s/devices/%s", siteID, deviceID)
+        err := c.do(ctx, http.MethodPost, urlPath, action, nil)
+        if err != nil </span><span class="cov8" title="1">{
+                return fmt.Errorf("failed to execute device action: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">return nil</span>
+}
+
+// GetDeviceStatistics retrieves the latest statistics for a device
+func (c *Client) GetDeviceStatistics(ctx context.Context, siteID, deviceID string) (*DeviceStatistics, error) <span class="cov8" title="1">{
+        var response struct {
+                Data []DeviceStatistics `json:"data"`
+        }
+
+        urlPath := fmt.Sprintf("/v1/sites/%s/devices/%s/stats", siteID, deviceID)
+        err := c.do(ctx, http.MethodGet, urlPath, nil, &amp;response)
+        if err != nil </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("failed to get device statistics: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">if len(response.Data) == 0 </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("no statistics found for device: %s", deviceID)
+        }</span>
+
+        <span class="cov8" title="1">return &amp;response.Data[0], nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file9" style="display: none">package unifi
+
+import (
+        "context"
+        "fmt"
+        "net/http"
+        "net/url"
+)
+
+// HotspotVoucher represents a UniFi hotspot voucher
+type HotspotVoucher struct {
+        ID                  string `json:"_id"`                            // Unique identifier
+        CreatedAt           string `json:"createdAt"`                      // Timestamp when the voucher was created
+        Name                string `json:"name"`                           // Voucher note, may contain duplicate values across vouchers
+        Code                string `json:"code"`                           // Secret code to activate the voucher using the Hotspot portal
+        AuthorizeGuestLimit int    `json:"authorizedGuestLimit,omitempty"` // Optional limit for how many different guests can use the voucher
+        AuthorizeGuestCount int    `json:"authorizedGuestCount"`           // For how many guests the voucher has been used to authorize access
+        ActivatedAt         string `json:"activatedAt,omitempty"`          // Optional timestamp when the voucher was activated (first guest)
+        ExpiresAt           string `json:"expiresAt,omitempty"`            // Optional timestamp when the voucher will expire
+        Expired             bool   `json:"expired"`                        // Whether the voucher has expired and can no longer be used
+        TimeLimitMinutes    int    `json:"timeLimitMinutes"`               // How long the voucher will provide access since authorization
+        DataUsageLimitMB    int    `json:"dataUsageLimitMBytes,omitempty"` // Optional data usage limit in megabytes
+        RxRateLimitKbps     int    `json:"rxRateLimitKbps,omitempty"`      // Optional download rate limit in kilobits per second
+        TxRateLimitKbps     int    `json:"txRateLimitKbps,omitempty"`      // Optional upload rate limit in kilobits per second
+}
+
+// ListHotspotVouchersParams contains parameters for listing hotspot vouchers
+type ListHotspotVouchersParams struct {
+        Offset int `json:"offset,omitempty"`
+        Limit  int `json:"limit,omitempty"`
+}
+
+// ListHotspotVouchersResponse represents the response from listing hotspot vouchers
+type ListHotspotVouchersResponse struct {
+        PaginatedResponse
+        Data []HotspotVoucher `json:"data"`
+}
+
+// CreateHotspotVoucherRequest represents the request to create a hotspot voucher
+type CreateHotspotVoucherRequest struct {
+        Note                string `json:"note,omitempty"`
+        Duration            int    `json:"duration"`                        // Duration in minutes
+        AuthorizeGuestLimit int    `json:"authorize_guest_limit,omitempty"` // Optional limit for number of guests
+        TimeLimitMinutes    int    `json:"time_limit_minutes"`              // How long the voucher will provide access
+        DataUsageLimitMB    int    `json:"data_usage_limit_mb,omitempty"`   // Optional data usage limit in MB
+        DownRateLimitKbps   int    `json:"down_rate_limit_kbps,omitempty"`  // Optional download rate limit
+        UpRateLimitKbps     int    `json:"up_rate_limit_kbps,omitempty"`    // Optional upload rate limit
+        Count               int    `json:"count,omitempty"`                 // Number of vouchers to create
+}
+
+// CreateHotspotVoucherResponse represents the response from creating hotspot vouchers
+type CreateHotspotVoucherResponse struct {
+        Data []HotspotVoucher `json:"data"`
+}
+
+// GenerateHotspotVouchersRequest represents the request to generate hotspot vouchers
+type GenerateHotspotVouchersRequest struct {
+        Count               int    `json:"count"`                          // [1..10000] Number of vouchers to generate, default: 1
+        Name                string `json:"name"`                           // Required: Voucher note, duplicated across all generated vouchers
+        AuthorizeGuestLimit int    `json:"authorizedGuestLimit,omitempty"` // [1..] Optional limit for guests per voucher
+        TimeLimitMinutes    int    `json:"timeLimitMinutes"`               // [1..1000000] Required: How long the voucher provides access
+        DataUsageLimitMB    int    `json:"dataUsageLimitMBytes,omitempty"` // [1..1046576] Optional data usage limit in MB
+        RxRateLimitKbps     int    `json:"rxRateLimitKbps,omitempty"`      // [2..100000] Optional download rate limit in Kbps
+        TxRateLimitKbps     int    `json:"txRateLimitKbps,omitempty"`      // [2..100000] Optional upload rate limit in Kbps
+}
+
+// GenerateHotspotVouchersResponse represents the response from generating vouchers
+type GenerateHotspotVouchersResponse struct {
+        Meta struct {
+                RC      string `json:"rc"`
+                Message string `json:"msg"`
+        } `json:"meta"`
+        Data []HotspotVoucher `json:"data"`
+}
+
+// GetVoucherDetailsResponse represents the response from getting voucher details
+type GetVoucherDetailsResponse struct {
+        Data []HotspotVoucher `json:"data"`
+}
+
+// ListHotspotVouchers retrieves a paginated list of hotspot vouchers for a site
+func (c *Client) ListHotspotVouchers(ctx context.Context, siteID string, params *ListHotspotVouchersParams) (*ListHotspotVouchersResponse, error) <span class="cov8" title="1">{
+        urlPath := fmt.Sprintf("/v1/sites/%s/hotspot/vouchers", siteID)
+
+        if params != nil </span><span class="cov8" title="1">{
+                query := url.Values{}
+                if params.Offset &gt; 0 </span><span class="cov8" title="1">{
+                        query.Set("offset", fmt.Sprint(params.Offset))
+                }</span>
+                <span class="cov8" title="1">if params.Limit &gt; 0 </span><span class="cov8" title="1">{
+                        query.Set("limit", fmt.Sprint(params.Limit))
+                }</span>
+                <span class="cov8" title="1">if len(query) &gt; 0 </span><span class="cov8" title="1">{
+                        urlPath += "?" + query.Encode()
+                }</span>
+        }
+
+        <span class="cov8" title="1">var response ListHotspotVouchersResponse
+        err := c.do(ctx, http.MethodGet, urlPath, nil, &amp;response)
+        if err != nil </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("failed to list hotspot vouchers: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">return &amp;response, nil</span>
+}
+
+// CreateHotspotVoucher creates one or more hotspot vouchers for a site
+func (c *Client) CreateHotspotVoucher(ctx context.Context, siteID string, request *CreateHotspotVoucherRequest) (*CreateHotspotVoucherResponse, error) <span class="cov8" title="1">{
+        urlPath := fmt.Sprintf("/v1/sites/%s/hotspot/vouchers", siteID)
+
+        var response CreateHotspotVoucherResponse
+        err := c.do(ctx, http.MethodPost, urlPath, request, &amp;response)
+        if err != nil </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("failed to create hotspot voucher: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">return &amp;response, nil</span>
+}
+
+// GetHotspotVoucher retrieves a specific hotspot voucher by ID
+func (c *Client) GetHotspotVoucher(ctx context.Context, siteID, voucherID string) (*HotspotVoucher, error) <span class="cov8" title="1">{
+        var response struct {
+                Data []HotspotVoucher `json:"data"`
+        }
+
+        err := c.do(ctx, http.MethodGet, fmt.Sprintf("/v1/sites/%s/hotspot/vouchers/%s", siteID, voucherID), nil, &amp;response)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to get hotspot voucher: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">if len(response.Data) == 0 </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("voucher not found: %s", voucherID)
+        }</span>
+
+        <span class="cov8" title="1">return &amp;response.Data[0], nil</span>
+}
+
+// DeleteHotspotVoucher deletes a specific hotspot voucher
+func (c *Client) DeleteHotspotVoucher(ctx context.Context, siteID, voucherID string) error <span class="cov8" title="1">{
+        err := c.do(ctx, http.MethodDelete, fmt.Sprintf("/v1/sites/%s/hotspot/vouchers/%s", siteID, voucherID), nil, nil)
+        if err != nil </span><span class="cov8" title="1">{
+                return fmt.Errorf("failed to delete hotspot voucher: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">return nil</span>
+}
+
+// GenerateHotspotVouchers generates one or more hotspot vouchers with the specified parameters
+func (c *Client) GenerateHotspotVouchers(ctx context.Context, siteID string, request *GenerateHotspotVouchersRequest) (*GenerateHotspotVouchersResponse, error) <span class="cov8" title="1">{
+        if request == nil </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("request cannot be nil")
+        }</span>
+
+        // Validate required fields and ranges
+        <span class="cov8" title="1">if request.Name == "" </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("name is required")
+        }</span>
+        <span class="cov8" title="1">if request.Count &lt; 1 || request.Count &gt; 10000 </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("count must be between 1 and 10000")
+        }</span>
+        <span class="cov8" title="1">if request.TimeLimitMinutes &lt; 1 || request.TimeLimitMinutes &gt; 1000000 </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("timeLimitMinutes must be between 1 and 1000000")
+        }</span>
+        <span class="cov8" title="1">if request.AuthorizeGuestLimit &lt; 0 </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("authorizedGuestLimit must be greater than 0")
+        }</span>
+        <span class="cov8" title="1">if request.DataUsageLimitMB != 0 &amp;&amp; (request.DataUsageLimitMB &lt; 1 || request.DataUsageLimitMB &gt; 1046576) </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("dataUsageLimitMBytes must be between 1 and 1046576")
+        }</span>
+        <span class="cov8" title="1">if request.RxRateLimitKbps != 0 &amp;&amp; (request.RxRateLimitKbps &lt; 2 || request.RxRateLimitKbps &gt; 100000) </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("rxRateLimitKbps must be between 2 and 100000")
+        }</span>
+        <span class="cov8" title="1">if request.TxRateLimitKbps != 0 &amp;&amp; (request.TxRateLimitKbps &lt; 2 || request.TxRateLimitKbps &gt; 100000) </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("txRateLimitKbps must be between 2 and 100000")
+        }</span>
+
+        <span class="cov8" title="1">urlPath := fmt.Sprintf("/v1/sites/%s/hotspot/vouchers", siteID)
+
+        var response GenerateHotspotVouchersResponse
+        err := c.do(ctx, http.MethodPost, urlPath, request, &amp;response)
+        if err != nil </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("failed to generate hotspot vouchers: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">return &amp;response, nil</span>
+}
+
+// GetVoucherDetails retrieves detailed information about a specific hotspot voucher
+func (c *Client) GetVoucherDetails(ctx context.Context, siteID, voucherID string) (*HotspotVoucher, error) <span class="cov8" title="1">{
+        if siteID == "" </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("siteId is required")
+        }</span>
+        <span class="cov8" title="1">if voucherID == "" </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("voucherId is required")
+        }</span>
+
+        <span class="cov8" title="1">urlPath := fmt.Sprintf("/v1/sites/%s/hotspot/vouchers/%s", siteID, voucherID)
+
+        var response GetVoucherDetailsResponse
+        err := c.do(ctx, http.MethodGet, urlPath, nil, &amp;response)
+        if err != nil </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("failed to get voucher details: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">if len(response.Data) == 0 </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("voucher not found: %s", voucherID)
+        }</span>
+
+        <span class="cov8" title="1">return &amp;response.Data[0], nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file10" style="display: none">package unifi
+
+import (
+        "context"
+        "fmt"
+        "net/http"
+        "net/url"
+)
+
+// Site represents a UniFi site
+type Site struct {
+        ID   string `json:"_id"`  // Unique identifier
+        Name string `json:"name"` // Site name
+}
+
+// ListSitesParams contains parameters for listing sites
+type ListSitesParams struct {
+        Offset int `json:"offset,omitempty"` // Default: 0
+        Limit  int `json:"limit,omitempty"`  // [0..200] Default: 25
+}
+
+// ListSitesResponse represents the response from listing sites
+type ListSitesResponse struct {
+        Offset     int    `json:"offset"`     // Starting offset
+        Limit      int    `json:"limit"`      // Number of sites per page
+        Count      int    `json:"count"`      // Number of sites in this response
+        TotalCount int    `json:"totalCount"` // Total number of sites available
+        Data       []Site `json:"data"`       // List of sites
+}
+
+// ListSites retrieves all sites accessible to the authenticated user
+// If Multi-Site option is enabled, returns all created sites.
+// If Multi-Site option is disabled, returns just the default site.
+func (c *Client) ListSites(ctx context.Context, params *ListSitesParams) (*ListSitesResponse, error) <span class="cov8" title="1">{
+        const maxLimit = 200
+        urlPath := "/v1/sites"
+
+        if params != nil </span><span class="cov8" title="1">{
+                query := url.Values{}
+                if params.Offset &gt; 0 </span><span class="cov8" title="1">{
+                        query.Set("offset", fmt.Sprint(params.Offset))
+                }</span>
+                <span class="cov8" title="1">if params.Limit &gt; 0 </span><span class="cov8" title="1">{
+                        if params.Limit &gt; maxLimit </span><span class="cov8" title="1">{
+                                return nil, fmt.Errorf("limit must be between 0 and %d", maxLimit)
+                        }</span>
+                        <span class="cov8" title="1">query.Set("limit", fmt.Sprint(params.Limit))</span>
+                }
+                <span class="cov8" title="1">if len(query) &gt; 0 </span><span class="cov8" title="1">{
+                        urlPath += "?" + query.Encode()
+                }</span>
+        }
+
+        <span class="cov8" title="1">var response ListSitesResponse
+        if err := c.do(ctx, http.MethodGet, urlPath, nil, &amp;response); err != nil </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("failed to list sites: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">return &amp;response, nil</span>
+}
+
+// GetSite retrieves a specific site by ID
+func (c *Client) GetSite(ctx context.Context, siteID string) (*Site, error) <span class="cov0" title="0">{
+        if siteID == "" </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("siteID cannot be empty")
+        }</span>
+
+        <span class="cov0" title="0">var response struct {
+                Data []Site `json:"data"`
+        }
+
+        err := c.do(ctx, http.MethodGet, fmt.Sprintf("/v1/sites/%s", siteID), nil, &amp;response)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to get site: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">if len(response.Data) == 0 </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("site not found: %s", siteID)
+        }</span>
+
+        <span class="cov0" title="0">return &amp;response.Data[0], nil</span>
+}
+</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>
