@@ -9,7 +9,7 @@ import (
 
 // NetworkClient represents a connected client device per the UniFi API
 type NetworkClient struct {
-	ID             string  `json:"_id"`            // Unique identifier
+	ID             string  `json:"id"`             // Unique identifier
 	Name           string  `json:"name"`           // Client name
 	ConnectedAt    string  `json:"connectedAt"`    // Connection timestamp
 	IPAddress      string  `json:"ipAddress"`      // IP address

@@ -1,0 +1,7 @@
+---
+description: How the project is laid out and how to perform common tasks in it
+globs: 
+---
+- Environment variables are set in a [.env](mdc:.env) and any new additions should be reflected for users in [.env.sample](mdc:.env.sample) 
+- Taskfile's are used. [Taskfile.yml](mdc:Taskfile.yml) has a number of common ones, but you should have a simple `task <name>` for anything you do commonly, including tests, integration tests, coverage, building, etc.
+- We keep a running worklog of everything we're doing in [worklog.mdc](mdc:.cursor/rules/worklog.mdc).  Use this file to see where we left off, what needs to be done, and make updates accordingly.

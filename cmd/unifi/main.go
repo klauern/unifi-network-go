@@ -16,7 +16,7 @@ func main() {
 			&cli.StringFlag{
 				Name:     "url",
 				Usage:    "UniFi Network Controller URL",
-				EnvVars:  []string{"UNIFI_URL"},
+				EnvVars:  []string{"UNIFI_BASE_URL"},
 				Required: true,
 			},
 			&cli.StringFlag{

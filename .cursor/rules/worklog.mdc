@@ -1,6 +1,6 @@
 ---
 description: Tackling the outlying work for this project and as a scratchpad for how much we've gotten done.
-globs: 
+globs:
 ---
 # Overview
 
@@ -9,7 +9,78 @@ This rule outlines the list of things that we have work to do on.  We will mark 
 # To Do List / Worklog
 
 - [ ] Develop integration tests for read-only endpoints (no integration tests that cause devices to restart or add/remove)
-- [ ] Modify logging output to use `log/slog`, removing overly verbose logging.  Tests shouldn't need to output everything.
-- [ ] Preference Setting in the CLI.  Store preferences in XDG-compliant paths.
-- [ ] Storing credentials in the MacOS Keychain
+  - Sub-tasks:
+    - [x] Create integration test infrastructure
+      - Environment variable configuration
+      - Skip mechanism for non-integration tests
+      - Helper functions for test client creation
+      - TLS configuration support
+    - [x] ListSites endpoint integration tests
+      - Basic listing validation
+      - Pagination testing
+      - Error cases
+    - [x] ListNetworkClients endpoint integration tests
+      - Basic client listing validation
+      - Field validation
+      - Pagination with offset
+      - Error cases (invalid site ID, invalid limit)
+    - [ ] ListDevices endpoint integration tests
+      - Basic device listing validation
+      - Field validation
+      - Pagination testing
+      - Error cases
+    - [ ] GetHotspotVouchers endpoint integration tests
+      - Basic voucher listing validation
+      - Field validation
+      - Pagination testing
+      - Error cases
+  - Notes:
+    - Initial assessment (2024-02-22):
+      - Current test infrastructure uses mock transport for unit testing
+      - Need to create parallel integration test structure that uses real network calls
+      - Existing endpoints to prioritize for testing:
+        - ListSites (sites.go)
+        - ListClients (clients.go)
+        - ListDevices (devices.go)
+        - GetHotspotVouchers (hotspot_vouchers.go)
+    - Next steps:
+      1. Create integration test configuration (separate from unit tests)
+      2. Implement test environment setup with real UniFi controller
+      3. Start with ListSites integration test as it's the simplest endpoint
+      4. Add remaining read-only endpoint tests
+    - Progress:
+      - Created integration test infrastructure in integration_test_helpers.go
+        - Environment variable based configuration
+        - Skip mechanism for non-integration test runs
+        - Helper functions for creating integration test clients
+        - Added support for insecure TLS (common with UniFi controllers)
+      - Implemented and verified ListSites integration tests
+        - Basic site listing validation
+        - Pagination testing
+        - Tests passing against real UniFi controller
+      - Implemented and verified ListNetworkClients integration tests
+        - Basic client listing validation
+        - Field validation for required fields
+        - Pagination testing with offset
+        - Error case handling (invalid site ID, invalid limit)
+        - Fixed ID field mapping in NetworkClient struct
+        - Tests passing against real UniFi controller
+      - Next: Implement integration tests for ListDevices endpoint
 
+- [ ] Modify logging output to use `log/slog`, removing overly verbose logging.  Tests shouldn't need to output everything.
+  - Notes:
+    - Need to audit current logging implementation
+    - Plan migration path from existing logging to slog
+    - Define logging levels and when to use each
+
+- [ ] Preference Setting in the CLI.  Store preferences in XDG-compliant paths.
+  - Notes:
+    - Research XDG base directory specification implementation in Go
+    - Identify which preferences need to be stored
+    - Plan preference file format (YAML/JSON/TOML)
+
+- [ ] Storing credentials in the MacOS Keychain
+  - Notes:
+    - Research Go packages for MacOS Keychain integration
+    - Define credential storage structure
+    - Plan secure credential retrieval mechanism
