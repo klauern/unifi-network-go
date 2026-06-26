@@ -38,10 +38,7 @@ func loadIntegrationConfig(t *testing.T) *integrationTestConfig {
 	}
 
 	// Default to insecure for integration tests since many UniFi controllers use self-signed certs
-	insecure := true
-	if os.Getenv("UNIFI_INTEGRATION_SECURE") == "1" {
-		insecure = false
-	}
+	insecure := os.Getenv("UNIFI_INTEGRATION_SECURE") != "1"
 
 	return &integrationTestConfig{
 		BaseURL:  baseURL,
