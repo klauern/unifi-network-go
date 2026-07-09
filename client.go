@@ -192,7 +192,9 @@ func (c *Client) do(ctx context.Context, method, urlPath string, body interface{
 	if err != nil {
 		return fmt.Errorf("failed to execute request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	// Read the entire response body for debugging
 	respBody, err := io.ReadAll(resp.Body)
